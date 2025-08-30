@@ -11,6 +11,8 @@ node_modules/
 build/
 **/dist/
 dist/
+**/out/
+out/
 
 # Environment variables
 .env
@@ -88,12 +90,6 @@ jspm_packages/
 **/dist
 .nuxt
 dist
-
-# Gatsby files
-**/.cache/
-**/public
-.cache/
-public
 
 # Storybook build outputs
 **/.out

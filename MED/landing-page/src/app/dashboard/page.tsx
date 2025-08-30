@@ -58,19 +58,19 @@ export default function ComingSoonPage() {
                 transition={{ duration: 0.6, delay: 0.6 }}
                 className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12"
               >
-                <div className="glass-card p-6 space-y-3">
+                <div className="glass-card p-6 space-y-3 rounded-lg">
                   <Star className="w-8 h-8 text-purple-300 mx-auto" />
                   <h3 className="text-lg font-semibold text-white">Smart Tracking</h3>
                   <p className="text-white/70 text-sm">Intelligent medication reminders with progress monitoring</p>
                 </div>
                 
-                <div className="glass-card p-6 space-y-3">
+                <div className="glass-card p-6 space-y-3 rounded-lg">
                   <Zap className="w-8 h-8 text-teal-300 mx-auto" />
                   <h3 className="text-lg font-semibold text-white">AI Insights</h3>
                   <p className="text-white/70 text-sm">Personalized health tips based on your medication profile</p>
                 </div>
                 
-                <div className="glass-card p-6 space-y-3">
+                <div className="glass-card p-6 space-y-3 rounded-lg">
                   <Clock className="w-8 h-8 text-purple-300 mx-auto" />
                   <h3 className="text-lg font-semibold text-white">Family Sharing</h3>
                   <p className="text-white/70 text-sm">Keep loved ones informed with progress updates</p>

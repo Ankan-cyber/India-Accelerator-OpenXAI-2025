@@ -12,7 +12,10 @@ export const metadata: Metadata = {
     title: 'PillPal - Your Medication Companion',
     description: 'A user-friendly medication tracking app designed for seniors with AI-powered health tips and smart reminders.',
     type: 'website',
-  }
+  },
+  icons: {
+    icon: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({

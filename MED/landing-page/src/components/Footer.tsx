@@ -49,7 +49,7 @@ export default function Footer() {
             
             <div className="glass-card border-white/20 rounded-full py-4 px-8 inline-block">
               <p className="text-white/70 text-sm">
-                © 2025 PillPal. Made with{" "}
+                © {new Date().getFullYear()} PillPal. Made with{" "}
                 <motion.span
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
