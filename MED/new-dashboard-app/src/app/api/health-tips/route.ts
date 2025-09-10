@@ -3,6 +3,11 @@ import { Ollama } from 'ollama'
 
 const ollama = new Ollama({ host: 'http://localhost:11434' })
 
+interface Medication {
+  name: string
+  dosage: string
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -10,7 +15,7 @@ export async function POST(request: NextRequest) {
     
     const prompt = `You are a helpful healthcare assistant providing personalized health tips for seniors. Focus on medication adherence, general wellness, and safety. Always remind users to consult their healthcare provider.
 
-Generate a personalized health tip for a senior patient. Their current medications include: ${medications?.map((med: any) => `${med.name} ${med.dosage}`).join(', ') || 'none specified'}. Focus on medication management, general wellness, or safety tips.
+Generate a personalized health tip for a senior patient. Their current medications include: ${medications?.map((med: Medication) => `${med.name} ${med.dosage}`).join(', ') || 'none specified'}. Focus on medication management, general wellness, or safety tips.
 
 Respond with valid JSON in this exact format: { "tip": "your tip here", "category": "category name", "priority": "high" }
 
