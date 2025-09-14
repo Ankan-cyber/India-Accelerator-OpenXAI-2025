@@ -1,5 +1,6 @@
 import { QueryProvider } from '@/components/providers/query-provider'
 import { AuthProvider } from '@/components/providers/auth-provider'
+import { Analytics } from "@vercel/analytics/next"
 import './globals.css'
 
 export const metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
           </QueryProvider>
         </AuthProvider>
       </body>
+      <Analytics />
     </html>
   )
 }
