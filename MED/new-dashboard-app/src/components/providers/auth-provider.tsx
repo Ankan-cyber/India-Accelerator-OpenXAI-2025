@@ -56,7 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         setUser(data.user)
-        router.push('/')
+        // Use window.location.href for a more reliable redirect
+        window.location.href = '/'
         return { success: true }
       } else {
         return { success: false, error: data.message }
@@ -78,7 +79,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (response.ok) {
         setUser(data.user)
-        router.push('/')
+        // Use window.location.href for a more reliable redirect
+        window.location.href = '/'
         return { success: true }
       } else {
         return { success: false, error: data.message }

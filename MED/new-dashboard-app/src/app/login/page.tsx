@@ -23,7 +23,7 @@ export default function LoginPage() {
       if (!result.success) {
         setError(result.error || "Invalid credentials")
       }
-      // If successful, the AuthProvider will handle the redirect
+      // If successful, the AuthProvider will handle the redirect to dashboard
     } catch (err) {
       console.error('Login error:', err)
       setError("Unable to connect. Please check your internet connection.")
