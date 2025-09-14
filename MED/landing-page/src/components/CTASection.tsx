@@ -95,7 +95,7 @@ export default function CTASection() {
                   className="glass-button-primary w-full sm:w-auto justify-center px-6 sm:px-8"
                   data-testid="button-start-tracking"
                 >
-                  <a href="/dashboard" className="flex items-center justify-center">
+                  <a href="https://pillpal-app.ankanroy.in" className="flex items-center justify-center">
                     <Sparkles className="mr-2 h-5 w-5 flex-shrink-0" />
                     <span className="truncate text-base sm:text-lg hidden sm:inline">Start Tracking Your Medications</span>
                     <span className="truncate text-base sm:text-lg sm:hidden">Start Tracking</span>

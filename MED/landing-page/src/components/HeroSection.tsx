@@ -98,7 +98,7 @@ export default function HeroSection() {
                   className="glass-button-primary w-full sm:w-auto text-center justify-center"
                   data-testid="button-get-started"
                 >
-                  <a href="/dashboard" className="flex items-center justify-center">
+                  <a href="https://pillpal-app.ankanroy.in" className="flex items-center justify-center">
                     <PillBottle className="mr-2 h-5 w-5 flex-shrink-0" />
                     <span className="truncate">Start Tracking</span>
                   </a>
