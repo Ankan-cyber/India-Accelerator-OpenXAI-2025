@@ -21,8 +21,10 @@ interface AddMedicationDialogProps {
   onClose: () => void;
 }
 
+type FormData = Omit<InsertMedication, "userId">;
+
 export function AddMedicationDialog({ open, onClose }: AddMedicationDialogProps) {
-  const [formData, setFormData] = useState<InsertMedication>({
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     dosage: "",
     instructions: "",
@@ -67,7 +69,9 @@ export function AddMedicationDialog({ open, onClose }: AddMedicationDialogProps)
       return;
     }
 
-    createMutation.mutate(formData);
+    // This is a placeholder. Replace with actual user ID from your auth system.
+    const userId = "user_2i5aOsdmAFkI3Lp2sWhr1514a1W"; 
+    createMutation.mutate({ ...formData, userId });
   };
 
   const addTime = () => {

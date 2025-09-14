@@ -2,22 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { Medication } from '@/lib/models'
 
-interface RouteContext {
-  params: {
-    id: string;
-  };
-}
-
 export async function PUT(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
+    const { id } = await params
     const body = await request.json()
     
     const medication = await Medication.findByIdAndUpdate(
-      params.id,
+      id,
       body,
       { new: true }
     )
@@ -45,12 +40,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB()
+    const { id } = await params
     
-    const medication = await Medication.findByIdAndDelete(params.id)
+    const medication = await Medication.findByIdAndDelete(id)
     
     if (!medication) {
       return NextResponse.json({ error: 'Medication not found' }, { status: 404 })

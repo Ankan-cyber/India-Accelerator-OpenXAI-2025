@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/auth-provider'
 import { PillBottle, Eye, EyeOff } from 'lucide-react'
@@ -12,7 +11,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
   const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,22 +19,11 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        login(data.user)
-        router.push('/')
-      } else {
-        const error = await response.json()
-        setError(error.message || "Invalid credentials")
+      const result = await login(email, password)
+      if (!result.success) {
+        setError(result.error || "Invalid credentials")
       }
+      // If successful, the AuthProvider will handle the redirect
     } catch (err) {
       console.error('Login error:', err)
       setError("Unable to connect. Please check your internet connection.")

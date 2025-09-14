@@ -30,6 +30,12 @@ interface HealthTip {
   priority?: 'high' | 'medium' | 'low';
 }
 
+interface Medication {
+  id: string;
+  name: string;
+  dosage: string;
+}
+
 export default function HealthTips() {
   const [personalizedTip, setPersonalizedTip] = useState<HealthTip | null>(null);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
@@ -44,7 +50,7 @@ export default function HealthTips() {
     });
   };
 
-  const { data: dailyTip } = useQuery<HealthTip>({
+  const { data: dailyTip, refetch: refetchDailyTip, isFetching: isFetchingDailyTip } = useQuery<HealthTip>({
     queryKey: ['/api/daily-health-tip'],
     queryFn: async () => {
       const response = await fetch('/api/daily-health-tip');
@@ -54,11 +60,21 @@ export default function HealthTips() {
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
   });
 
+  const { data: medications } = useQuery<Medication[]>({
+    queryKey: ['/api/medications'],
+    queryFn: async () => {
+      const response = await fetch('/api/medications');
+      if (!response.ok) throw new Error('Failed to fetch medications');
+      return response.json();
+    },
+  });
+
   const generateTipMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (meds: Medication[]) => {
       const response = await fetch('/api/health-tips', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medications: meds }),
       });
       if (!response.ok) throw new Error('Failed to generate tip');
       return response.json();
@@ -181,9 +197,24 @@ export default function HealthTips() {
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold mb-2 text-white">Daily Health Tip</h3>
                   <p className="text-lg leading-relaxed mb-2 text-gray-200">{dailyTip.tip}</p>
-                  <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full text-sm backdrop-blur-md">
-                    {dailyTip.category}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full text-sm backdrop-blur-md">
+                      {dailyTip.category}
+                    </span>
+                    <Button
+                      onClick={() => refetchDailyTip()}
+                      disabled={isFetchingDailyTip}
+                      size="sm"
+                      className="glass-button"
+                    >
+                      {isFetchingDailyTip ? (
+                        <RefreshCw size={16} className="mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw size={16} className="mr-2" />
+                      )}
+                      New Tip
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -201,8 +232,8 @@ export default function HealthTips() {
                 </p>
               </div>
               <Button
-                onClick={() => generateTipMutation.mutate()}
-                disabled={generateTipMutation.isPending}
+                onClick={() => generateTipMutation.mutate(medications || [])}
+                disabled={generateTipMutation.isPending || !medications}
                 className="glass-button-primary"
                 data-testid="button-generate-tip"
               >

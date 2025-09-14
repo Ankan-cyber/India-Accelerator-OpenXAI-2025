@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useAuth } from '@/components/providers/auth-provider'
 import { PillBottle, Eye, EyeOff, UserPlus } from 'lucide-react'
 
 export default function RegisterPage() {
@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const router = useRouter()
+  const { register } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,22 +34,12 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      })
-
-      if (response.ok) {
-        setSuccess("Account Created! Welcome to PillPal! Please sign in to continue.")
-        setTimeout(() => {
-          router.push('/login')
-        }, 2000)
+      const result = await register(name, email, password)
+      if (result.success) {
+        setSuccess("Account Created! Welcome to PillPal!")
+        // AuthProvider will handle the redirect to dashboard
       } else {
-        const error = await response.json()
-        setError(error.message || "Something went wrong")
+        setError(result.error || "Something went wrong")
       }
     } catch (err) {
       console.error('Registration error:', err)

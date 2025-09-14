@@ -10,6 +10,7 @@ const userSchema = new Schema({
 
 // Medication Schema
 const medicationSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   dosage: { type: String, required: true },
   instructions: { type: String },
@@ -20,6 +21,7 @@ const medicationSchema = new Schema({
 
 // Medication Log Schema
 const medicationLogSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   medicationId: { type: Schema.Types.ObjectId, ref: 'Medication', required: true },
   takenAt: { type: Date, required: true },
   scheduledTime: { type: String, required: true }, // Time string like "09:00"
@@ -28,6 +30,7 @@ const medicationLogSchema = new Schema({
 
 // Emergency Contact Schema
 const emergencyContactSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   phone: { type: String, required: true },
   relationship: { type: String, required: true },
@@ -47,6 +50,7 @@ export interface IUser {
 export interface IMedication {
   _id?: string
   id?: string
+  userId: string
   name: string
   dosage: string
   instructions?: string
@@ -58,6 +62,7 @@ export interface IMedication {
 export interface IMedicationLog {
   _id?: string
   id?: string
+  userId: string
   medicationId: string
   takenAt: Date
   scheduledTime: string
@@ -67,6 +72,7 @@ export interface IMedicationLog {
 export interface IEmergencyContact {
   _id?: string
   id?: string
+  userId: string
   name: string
   phone: string
   relationship: string
@@ -74,6 +80,7 @@ export interface IEmergencyContact {
 }
 
 export interface InsertMedication {
+  userId: string
   name: string
   dosage: string
   instructions?: string
@@ -82,6 +89,7 @@ export interface InsertMedication {
 }
 
 export interface InsertMedicationLog {
+  userId: string
   medicationId: string
   takenAt: Date
   scheduledTime: string
@@ -89,6 +97,7 @@ export interface InsertMedicationLog {
 }
 
 export interface InsertEmergencyContact {
+  userId: string
   name: string
   phone: string
   relationship: string

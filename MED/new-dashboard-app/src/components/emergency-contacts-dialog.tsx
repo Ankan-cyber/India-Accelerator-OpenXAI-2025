@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/components/providers/auth-provider";
 import type { InsertEmergencyContact } from "@/lib/models";
 import {
   Dialog,
@@ -22,7 +23,8 @@ interface EmergencyContactsDialogProps {
 }
 
 export function EmergencyContactsDialog({ open, onClose }: EmergencyContactsDialogProps) {
-  const [formData, setFormData] = useState<InsertEmergencyContact>({
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
     name: "",
     phone: "",
     relationship: "",
@@ -60,7 +62,17 @@ export function EmergencyContactsDialog({ open, onClose }: EmergencyContactsDial
       return;
     }
 
-    createMutation.mutate(formData);
+    if (!user?.id) {
+      setError("User not authenticated");
+      return;
+    }
+
+    const emergencyContactData: InsertEmergencyContact = {
+      ...formData,
+      userId: user.id,
+    };
+
+    createMutation.mutate(emergencyContactData);
   };
 
   const handleClose = () => {

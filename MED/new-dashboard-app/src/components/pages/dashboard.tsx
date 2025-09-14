@@ -24,6 +24,7 @@ import {
   Plus,
   PieChart,
   LogOut,
+  RefreshCw,
 } from "lucide-react";
 import type { IMedication, IMedicationLog } from "@/lib/models";
 
@@ -36,10 +37,25 @@ export default function Dashboard() {
   const [showAddMedication, setShowAddMedication] = useState(false);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
   const [showEmergencyContactsDisplay, setShowEmergencyContactsDisplay] = useState(false);
-  const [dailyTip, setDailyTip] = useState<HealthTip | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const { logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: dailyTip, refetch: refetchDailyTip, isLoading: isDailyTipLoading } = useQuery<HealthTip>({
+    queryKey: ['/api/daily-health-tip'],
+    queryFn: async () => {
+      const response = await fetch('/api/daily-health-tip');
+      if (!response.ok) throw new Error('Failed to fetch daily health tip');
+      return response.json();
+    },
+    staleTime: Infinity, // Will not refetch automatically
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Get current date info
   const now = new Date();
@@ -114,23 +130,6 @@ export default function Dashboard() {
       });
     },
   });
-
-  // Fetch daily health tip on mount
-  useEffect(() => {
-    const fetchDailyTip = async () => {
-      try {
-        const response = await fetch('/api/daily-health-tip');
-        if (response.ok) {
-          const tip = await response.json();
-          setDailyTip(tip);
-        }
-      } catch (error) {
-        console.error('Failed to fetch daily tip:', error);
-      }
-    };
-
-    fetchDailyTip();
-  }, []);
 
   // Get today's medication schedule
   const todaysSchedule = medications.flatMap(medication =>
@@ -296,8 +295,38 @@ export default function Dashboard() {
         )}
 
         {/* Daily Health Tip */}
-        {dailyTip && (
-          <section aria-label="Daily health tip">
+        <section aria-label="Daily health tip">
+          {!isMounted ? (
+            <Card className="health-tip-card mb-8 shimmer">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400" aria-hidden="true">
+                    <Lightbulb size={32} />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-6 bg-gray-500/30 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-500/30 rounded w-full"></div>
+                    <div className="h-4 bg-gray-500/30 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : isDailyTipLoading ? (
+            <Card className="health-tip-card mb-8 shimmer">
+              <CardContent className="p-6">
+                <div className="flex items-start space-x-4">
+                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400" aria-hidden="true">
+                    <Lightbulb size={32} />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-6 bg-gray-500/30 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-500/30 rounded w-full"></div>
+                    <div className="h-4 bg-gray-500/30 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : dailyTip && (
             <Card className="health-tip-card mb-8" tabIndex={0}>
               <CardContent className="p-6">
                 <div className="flex items-start space-x-4">
@@ -307,15 +336,30 @@ export default function Dashboard() {
                   <div className="flex-1">
                     <h3 className="senior-text-xl font-semibold mb-2 text-white">💡 Daily Health Tip</h3>
                     <p className="senior-text-lg leading-relaxed mb-2 text-gray-200">{dailyTip.tip}</p>
-                    <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full senior-text-sm backdrop-blur-md">
-                      {dailyTip.category}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full senior-text-sm backdrop-blur-md">
+                        {dailyTip.category}
+                      </span>
+                      <Button
+                        onClick={() => refetchDailyTip()}
+                        disabled={isDailyTipLoading}
+                        size="sm"
+                        className="glass-button"
+                      >
+                        {isDailyTipLoading ? (
+                          <RefreshCw size={16} className="mr-2 animate-spin" />
+                        ) : (
+                          <RefreshCw size={16} className="mr-2" />
+                        )}
+                        New Tip
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Today's Medications */}
         <section aria-label="Today's medication schedule">
@@ -416,12 +460,12 @@ export default function Dashboard() {
             </Link>
 
             <Card 
-              className="quick-action-card"
-              onClick={() => setShowEmergencyContacts(true)}
+              className="quick-action-card focus-ring rounded-xl"
+              onClick={() => setShowEmergencyContactsDisplay(true)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  setShowEmergencyContacts(true);
+                  setShowEmergencyContactsDisplay(true);
                 }
               }}
               tabIndex={0}

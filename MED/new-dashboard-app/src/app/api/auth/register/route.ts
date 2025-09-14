@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { User } from '@/lib/models'
 import bcrypt from 'bcryptjs'
+import { encrypt } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +39,14 @@ export async function POST(request: NextRequest) {
 
     const savedUser = await user.save()
 
-    // Return user data (excluding password)
+    // Create the session
+    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    const session = await encrypt({
+      userId: savedUser._id.toString(),
+      email: savedUser.email,
+    })
+
+    // Return user data and set the session cookie
     const userResponse = {
       id: savedUser._id.toString(),
       name: savedUser.name,
@@ -46,10 +54,20 @@ export async function POST(request: NextRequest) {
       createdAt: savedUser.createdAt,
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'User created successfully',
       user: userResponse,
     })
+
+    response.cookies.set('session', session, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      expires: expires,
+      sameSite: 'lax',
+      path: '/',
+    })
+
+    return response
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json(
