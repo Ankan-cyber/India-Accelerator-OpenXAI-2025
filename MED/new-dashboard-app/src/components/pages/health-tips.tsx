@@ -4,25 +4,19 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
 import {
-  Home,
-  Calendar,
-  Lightbulb,
-  TrendingUp,
   PillBottle,
-  Settings,
   RefreshCw,
   Heart,
   Shield,
   Activity,
   AlertCircle,
-  Phone,
-  LogOut,
+  Home,
+  Lightbulb,
 } from "lucide-react";
-import { useAuth } from "@/components/providers/auth-provider";
-import { useToast } from "@/hooks/use-toast";
 import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-display-dialog";
+import AppLayout from "@/components/app-layout";
+import AppHeader from "@/components/app-header";
 
 interface HealthTip {
   tip: string;
@@ -39,16 +33,6 @@ interface Medication {
 export default function HealthTips() {
   const [personalizedTip, setPersonalizedTip] = useState<HealthTip | null>(null);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
-  const { logout } = useAuth();
-  const { toast } = useToast();
-
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-  };
 
   const { data: dailyTip, refetch: refetchDailyTip, isFetching: isFetchingDailyTip } = useQuery<HealthTip>({
     queryKey: ['/api/daily-health-tip'],
@@ -133,62 +117,18 @@ export default function HealthTips() {
   };
 
   return (
-    <div className="min-h-screen relative z-10">
-      {/* Floating Orbs */}
-      <div className="floating-orb w-64 h-64 bg-purple-500/20 -top-32 -left-32"></div>
-      <div className="floating-orb w-48 h-48 bg-cyan-500/15 top-1/3 -right-24" style={{ animationDelay: '-2s' }}></div>
-      <div className="floating-orb w-32 h-32 bg-emerald-500/20 bottom-1/4 left-1/4" style={{ animationDelay: '-4s' }}></div>
-
-      {/* Header */}
-      <header className="dashboard-header border-b border-white/10 p-6 relative z-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4">
-                <h1 className="text-2xl sm:text-4xl font-bold text-white">
-                  Health Tips 💡
-                </h1>
-              </div>
-              <p className="text-base sm:text-xl text-gray-300">Personalized health guidance for you</p>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setShowEmergencyContacts(true)}
-                className="glass-button-primary senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <Phone size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Emergency</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                onClick={() => toast({ title: "Coming Soon!", description: "Settings page is under construction."})}
-              >
-                <Settings size={16} className="sm:mr-2" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="lg"
-                onClick={handleLogout}
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <LogOut size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <AppLayout>
+      <AppHeader 
+        title="Health Tips 💡"
+        subtitle="Personalized health guidance for you"
+        onEmergencyContacts={() => setShowEmergencyContacts(true)}
+      />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-6 relative z-10">
+      <main className="max-w-7xl mx-auto mobile-padding p-6 relative z-10">
         {/* Daily Tip */}
         {dailyTip && (
-          <Card className="health-tip-card mb-8">
+          <Card className="health-tip-card mobile-section-spacing">
             <CardContent className="p-6">
               <div className="flex items-start space-x-4">
                 <div className="p-3 rounded-full bg-purple-500/20 text-purple-400">
@@ -222,7 +162,7 @@ export default function HealthTips() {
         )}
 
         {/* Personalized Tip Generator */}
-        <Card className="glass-card border-white/20 mb-8">
+        <Card className="glass-card border-white/20 mobile-section-spacing">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -250,7 +190,7 @@ export default function HealthTips() {
 
         {/* Personalized Tip Display */}
         {personalizedTip && (
-          <Card className="health-tip-card mb-8">
+          <Card className="health-tip-card mobile-section-spacing">
             <CardContent className="p-6">
               <div className="flex items-start space-x-4">
                 <div className="p-3 rounded-full bg-cyan-500/20 text-cyan-400">
@@ -269,9 +209,9 @@ export default function HealthTips() {
         )}
 
         {/* Static Tips */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-6">General Health Tips</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="mobile-section-spacing">
+          <h2 className="text-2xl font-bold text-white mb-8">General Health Tips</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {staticTips.map((tip, index) => (
               <Card key={index} className={`glass-card border ${getPriorityColor(tip.priority || 'medium')}`}>
                 <CardContent className="p-6">
@@ -309,56 +249,6 @@ export default function HealthTips() {
         open={showEmergencyContacts}
         onClose={() => setShowEmergencyContacts(false)}
       />
-
-      {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 dashboard-navigation border-t border-white/10 p-4 z-30">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center space-x-8">
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-dashboard"
-              >
-                <Home size={24} />
-                <span className="ml-2">Home</span>
-              </Button>
-            </Link>
-            <Link href="/schedule">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-schedule"
-              >
-                <Calendar size={24} />
-                <span className="ml-2">Schedule</span>
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="nav-button active text-lg text-white"
-              data-testid="nav-health-tips"
-            >
-              <Lightbulb size={24} />
-              <span className="ml-2">Tips</span>
-            </Button>
-            <Link href="/progress">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-progress"
-              >
-                <TrendingUp size={24} />
-                <span className="ml-2">Progress</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-    </div>
+    </AppLayout>
   );
 }

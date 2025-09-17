@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/components/providers/auth-provider'
-import { PillBottle, Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff } from 'lucide-react'
+import Navbar from '@/components/navbar'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -33,41 +34,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <main className="min-h-screen flex flex-col items-center justify-center mobile-padding relative overflow-hidden">
       <div className="absolute inset-0 -z-10 h-full w-full bg-slate-950 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
-      <div className="floating-orb w-64 h-64 bg-purple-500/20 -top-32 -left-32" aria-hidden="true"></div>
-      <div className="floating-orb w-48 h-48 bg-cyan-500/15 top-1/3 -right-24" style={{ animationDelay: '-2s' }} aria-hidden="true"></div>
+      <div className="floating-orb w-32 sm:w-48 lg:w-64 h-32 sm:h-48 lg:h-64 bg-purple-500/20 -top-16 sm:-top-24 lg:-top-32 -left-16 sm:-left-24 lg:-left-32" aria-hidden="true"></div>
+      <div className="floating-orb w-24 sm:w-32 lg:w-48 h-24 sm:h-32 lg:h-48 bg-cyan-500/15 top-1/3 -right-12 sm:-right-16 lg:-right-24" style={{ animationDelay: '-2s' }} aria-hidden="true"></div>
       
-      <header className="absolute top-0 left-0 w-full p-6">
-        <div className="max-w-7xl mx-auto">
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="p-2 bg-white/10 rounded-lg group-hover:bg-white/20 transition-all">
-              <PillBottle className="text-purple-400 h-8 w-8" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">PillPal</h1>
-              <p className="text-sm text-gray-400">Your AI Health Companion</p>
-            </div>
-          </Link>
-        </div>
-      </header>
+      <Navbar variant="auth" />
 
-      <section className="w-full max-w-md z-10">
+      <section className="w-full max-w-sm sm:max-w-md z-10 mt-16 sm:mt-0">
         <div className="glass-card border-white/20 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="p-8">
-            <div className="text-center mb-8">
-              <div className="inline-block bg-purple-500/20 text-purple-300 rounded-full px-4 py-2 mb-4">
-                <span className="font-semibold">Welcome Back</span>
+          <div className="mobile-card">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="inline-block bg-purple-500/20 text-purple-300 rounded-full px-3 sm:px-4 py-2 mb-3 sm:mb-4">
+                <span className="font-semibold text-sm sm:text-base">Welcome Back</span>
               </div>
-              <h2 className="text-4xl font-bold text-white">Sign In</h2>
-              <p className="text-gray-400 mt-2">Access your medication dashboard</p>
+              <h2 className="mobile-hero-text font-bold text-white">Sign In</h2>
+              <p className="text-gray-400 mt-2 text-sm sm:text-base">Access your medication dashboard</p>
             </div>
 
-            <div className="space-y-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 {error && (
                   <div className="bg-red-900/50 border border-red-500/50 text-red-300 p-3 rounded-lg text-center">
-                    <p>{error}</p>
+                    <p className="text-sm sm:text-base">{error}</p>
                   </div>
                 )}
                 
@@ -80,12 +69,12 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 rounded-lg bg-black/20 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                    className="w-full px-3 sm:px-4 py-3 rounded-lg bg-black/20 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all text-base large-touch-target"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password">Password</label>
+                  <label htmlFor="password" className="text-sm font-medium text-gray-300">Password</label>
                   <div className="relative">
                     <input
                       id="password"
@@ -94,15 +83,15 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="w-full px-4 py-3 rounded-lg bg-black/20 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all"
+                      className="w-full px-3 sm:px-4 py-3 rounded-lg bg-black/20 border border-white/20 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500 transition-all text-base large-touch-target pr-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 px-4 flex items-center text-gray-400 hover:text-white"
+                      className="absolute inset-y-0 right-0 px-3 sm:px-4 flex items-center text-gray-400 hover:text-white touch-friendly"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      {showPassword ? <EyeOff /> : <Eye />}
+                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                     </button>
                   </div>
                 </div>
@@ -110,7 +99,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full glass-button-primary text-lg font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full glass-button-primary text-lg font-semibold py-3 rounded-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed large-touch-target"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center">

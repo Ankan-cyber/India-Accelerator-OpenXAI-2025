@@ -48,25 +48,25 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
       aria-label={`${medication.name} medication card`}
       tabIndex={0}
     >
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
             <div 
-              className={`w-20 h-20 rounded-full flex items-center justify-center border backdrop-blur-md ${colorClass}`}
+              className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center border backdrop-blur-md ${colorClass} flex-shrink-0`}
               aria-hidden="true"
             >
-              <PillBottle size={32} />
+              <PillBottle size={24} className="sm:w-8 sm:h-8" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <h4 
-                className="senior-text-xl font-semibold mb-1 text-white" 
+                className="text-lg sm:text-xl font-semibold mb-1 text-white truncate" 
                 data-testid={`text-medication-name-${medication.id}`}
                 id={`medication-name-${medication.id}`}
               >
                 💊 {medication.name}
               </h4>
               <p 
-                className="senior-text-lg text-gray-300" 
+                className="text-base sm:text-lg text-gray-300 truncate" 
                 data-testid={`text-medication-dosage-${medication.id}`}
                 aria-describedby={`medication-name-${medication.id}`}
               >
@@ -74,7 +74,7 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
               </p>
               {medication.instructions && (
                 <p 
-                  className="senior-text-base text-gray-400 mt-1" 
+                  className="text-sm sm:text-base text-gray-400 mt-1 line-clamp-2" 
                   data-testid={`text-medication-instructions-${medication.id}`}
                   aria-label={`Instructions: ${medication.instructions}`}
                 >
@@ -83,10 +83,10 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
               )}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-shrink-0">
+            <div className="text-center sm:text-right">
               <div 
-                className={`px-4 py-3 rounded-lg senior-text-lg font-semibold mb-2 backdrop-blur-md border ${
+                className={`px-3 py-2 sm:px-4 sm:py-3 rounded-lg text-base sm:text-lg font-semibold mb-2 backdrop-blur-md border ${
                   medication.isTaken 
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30' 
                     : 'bg-white/10 text-white border-white/20'
@@ -97,7 +97,7 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
                 🕐 {medication.scheduledTime}
               </div>
               <p 
-                className={`senior-text-base font-medium ${medication.isTaken ? 'text-emerald-400' : 'text-gray-300'}`}
+                className={`text-sm sm:text-base font-medium ${medication.isTaken ? 'text-emerald-400' : 'text-gray-300'}`}
                 aria-label={medication.isTaken ? 'Status: Taken' : 'Status: Pending'}
               >
                 {medication.isTaken ? '✅ Taken' : '⏳ Pending'}
@@ -108,7 +108,7 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
                 onClick={onMarkAsTaken}
                 disabled={isLoading}
                 size="lg"
-                className="glass-button-primary senior-text-lg px-6 py-3 large-touch-target interactive-feedback focus-ring-button"
+                className="glass-button-primary text-base sm:text-lg px-4 py-2 sm:px-6 sm:py-3 w-full sm:w-auto large-touch-target interactive-feedback focus-ring-button"
                 data-testid={`button-mark-taken-${medication.id}`}
                 aria-label={`Mark ${medication.name} as taken`}
                 aria-describedby={`medication-name-${medication.id}`}
@@ -116,12 +116,14 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
                 {isLoading ? (
                   <>
                     <span className="inline-block animate-spin mr-2">⏳</span>
-                    Marking...
+                    <span className="hidden sm:inline">Marking...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    <Check size={24} className="mr-2" aria-hidden="true" />
-                    Mark Taken
+                    <Check size={20} className="mr-2" aria-hidden="true" />
+                    <span className="hidden sm:inline">Mark Taken</span>
+                    <span className="sm:hidden">Mark</span>
                   </>
                 )}
               </Button>

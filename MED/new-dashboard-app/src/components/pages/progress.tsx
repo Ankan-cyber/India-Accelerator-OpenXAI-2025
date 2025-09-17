@@ -3,21 +3,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
 import {
-  Home,
-  Calendar,
-  Lightbulb,
-  TrendingUp,
-  Settings,
   Trophy,
   Target,
   Activity,
   Calendar as CalendarIcon,
   PieChart,
   BarChart3,
-  Phone,
-  LogOut,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -30,23 +22,13 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { IMedication, IMedicationLog } from "@/lib/models";
-import { useAuth } from "@/components/providers/auth-provider";
-import { useToast } from "@/hooks/use-toast";
 import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-display-dialog";
+import AppLayout from "@/components/app-layout";
+import AppHeader from "@/components/app-header";
 
 export default function Progress() {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all'>('week');
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
-  const { logout } = useAuth();
-  const { toast } = useToast();
-
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-  };
 
   const { data: medications = [] } = useQuery<IMedication[]>({
     queryKey: ['/api/medications'],
@@ -180,61 +162,17 @@ export default function Progress() {
   };
 
   return (
-    <div className="min-h-screen relative z-10">
-      {/* Floating Orbs */}
-      <div className="floating-orb w-64 h-64 bg-purple-500/20 -top-32 -left-32"></div>
-      <div className="floating-orb w-48 h-48 bg-cyan-500/15 top-1/3 -right-24" style={{ animationDelay: '-2s' }}></div>
-      <div className="floating-orb w-32 h-32 bg-emerald-500/20 bottom-1/4 left-1/4" style={{ animationDelay: '-4s' }}></div>
-
-      {/* Header */}
-      <header className="dashboard-header border-b border-white/10 p-6 relative z-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4">
-                <h1 className="text-2xl sm:text-4xl font-bold text-white">
-                  Progress Tracking 📊
-                </h1>
-              </div>
-              <p className="text-base sm:text-xl text-gray-300">Monitor your medication adherence and achievements</p>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setShowEmergencyContacts(true)}
-                className="glass-button-primary senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <Phone size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Emergency</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                onClick={() => toast({ title: "Coming Soon!", description: "Settings page is under construction."})}
-              >
-                <Settings size={16} className="sm:mr-2" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="lg"
-                onClick={handleLogout}
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <LogOut size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <AppLayout>
+      <AppHeader 
+        title="Progress Tracking 📊"
+        subtitle="Monitor your medication adherence and achievements"
+        onEmergencyContacts={() => setShowEmergencyContacts(true)}
+      />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-6 relative z-10">
+      <main className="mobile-padding p-6 relative z-10">
         {/* Time Range Selector */}
-        <Card className="glass-card border-white/20 mb-8">
+        <Card className="glass-card border-white/20 mobile-section-spacing">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">Time Range</h3>
@@ -256,7 +194,7 @@ export default function Progress() {
         </Card>
 
         {/* Key Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="mobile-grid mobile-section-spacing">
           <Card className="stat-card border-white/20 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -321,7 +259,7 @@ export default function Progress() {
         </div>
 
         {/* Daily Adherence Chart */}
-        <Card className="glass-card border-white/20 mb-8">
+        <Card className="glass-card border-white/20 mobile-section-spacing">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-white">Daily Adherence (Last 30 Days)</h3>
@@ -365,7 +303,7 @@ export default function Progress() {
         </Card>
 
         {/* Medication-Specific Progress */}
-        <Card className="glass-card border-white/20 mb-8">
+        <Card className="glass-card border-white/20 mobile-section-spacing">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-semibold text-white">Medication Progress (Last 30 Days)</h3>
@@ -452,56 +390,6 @@ export default function Progress() {
         open={showEmergencyContacts}
         onClose={() => setShowEmergencyContacts(false)}
       />
-
-      {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 dashboard-navigation border-t border-white/10 p-4 z-30">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center space-x-8">
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-dashboard"
-              >
-                <Home size={24} />
-                <span className="ml-2">Home</span>
-              </Button>
-            </Link>
-            <Link href="/schedule">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-schedule"
-              >
-                <Calendar size={24} />
-                <span className="ml-2">Schedule</span>
-              </Button>
-            </Link>
-            <Link href="/health-tips">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-health-tips"
-              >
-                <Lightbulb size={24} />
-                <span className="ml-2">Tips</span>
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="nav-button active text-lg text-white"
-              data-testid="nav-progress"
-            >
-              <TrendingUp size={24} />
-              <span className="ml-2">Progress</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
-    </div>
+    </AppLayout>
   );
 }

@@ -9,12 +9,10 @@ import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import AppLayout from "@/components/app-layout";
+import AppHeader from "@/components/app-header";
 import Link from "next/link";
-import { useAuth } from "@/components/providers/auth-provider";
 import { 
-  Phone,
-  Settings,
-  Home,
   Calendar,
   Lightbulb,
   TrendingUp,
@@ -23,7 +21,6 @@ import {
   Heart,
   Plus,
   PieChart,
-  LogOut,
   RefreshCw,
 } from "lucide-react";
 import type { IMedication, IMedicationLog } from "@/lib/models";
@@ -38,11 +35,10 @@ export default function Dashboard() {
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
   const [showEmergencyContactsDisplay, setShowEmergencyContactsDisplay] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const { logout } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: dailyTip, refetch: refetchDailyTip, isLoading: isDailyTipLoading } = useQuery<HealthTip>({
+  const { data: dailyTip, refetch: refetchDailyTip, isLoading: isDailyTipLoading, isFetching: isFetchingDailyTip } = useQuery<HealthTip>({
     queryKey: ['/api/daily-health-tip'],
     queryFn: async () => {
       const response = await fetch('/api/daily-health-tip');
@@ -72,14 +68,6 @@ export default function Dashboard() {
     day: 'numeric'
   });
 
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-    // No need to redirect here, ProtectedRoute will handle it
-  };
   // Queries
   const { data: medications = [], isLoading: medicationsLoading } = useQuery<IMedication[]>({
     queryKey: ['/api/medications'],
@@ -183,85 +171,32 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen relative z-10" role="main" aria-label="Medication Dashboard">
-      
+    <AppLayout>
       {/* Live region for announcements */}
       <div id="live-region" className="live-region" role="status" aria-live="polite" aria-atomic="true"></div>
       
-      {/* Floating Orbs */}
-      <div className="floating-orb w-64 h-64 bg-purple-500/20 -top-32 -left-32" aria-hidden="true"></div>
-      <div className="floating-orb w-48 h-48 bg-cyan-500/15 top-1/3 -right-24" style={{ animationDelay: '-2s' }} aria-hidden="true"></div>
-      <div className="floating-orb w-32 h-32 bg-emerald-500/20 bottom-1/4 left-1/4" style={{ animationDelay: '-4s' }} aria-hidden="true"></div>
-
-      {/* Header */}
-      <header className="glass-card border-white/10 p-6 relative z-20 mx-6 mt-6 rounded-2xl" role="banner">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4">
-                <h1 className="senior-text-2xl sm:text-4xl font-bold text-white" id="main-heading">
-                  {greeting}! 👋
-                </h1>
-                <div className="glass-button-primary px-3 sm:px-4 py-1 sm:py-2 rounded-full" aria-label="PillPal Application">
-                  <span className="senior-text-lg font-semibold">💊 PillPal</span>
-                </div>
-              </div>
-              <p className="senior-text-lg text-gray-300" aria-label={`Today's date: ${dateString}`}>{dateString}</p>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setShowEmergencyContactsDisplay(true)}
-                className="glass-button-primary senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                data-testid="button-emergency-contacts"
-                aria-label="View emergency contacts"
-              >
-                <Phone size={20} className="sm:mr-2" aria-hidden="true" />
-                <span className="hidden sm:inline">Emergency</span>
-              </Button>
-              <Button
-                variant="outline" 
-                size="lg"
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                data-testid="button-settings"
-                aria-label="Open settings"
-                onClick={() => toast({ title: "Coming Soon!", description: "Settings page is under construction."})}
-              >
-                <Settings size={20} className="sm:mr-2" aria-hidden="true" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="lg"
-                onClick={handleLogout}
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                aria-label="Logout"
-              >
-                <LogOut size={20} className="sm:mr-2" aria-hidden="true" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader 
+        greeting={greeting}
+        dateString={dateString}
+        onEmergencyContacts={() => setShowEmergencyContactsDisplay(true)}
+      />
 
       {/* Main Content */}
-      <main id="main-content" className="max-w-7xl mx-auto p-6 relative z-10" role="main" aria-labelledby="main-heading">
+      <main id="main-content" className="max-w-7xl mx-auto mobile-padding p-6 relative z-10" role="main" aria-labelledby="main-heading">
         {/* Quick Stats */}
-        <section aria-label="Today's medication statistics">
+        <section aria-label="Today's medication statistics" className="mobile-section-spacing">
           <h2 className="sr-only">Today&apos;s Statistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="mobile-grid">
             {quickStats.map((stat, index) => (
               <Card key={index} className={`glass-card border-white/20 bg-gradient-to-br ${stat.gradient} interactive-feedback focus-ring`} role="region" aria-label={stat.title} tabIndex={0}>
-                <CardContent className="p-6">
+                <CardContent className="mobile-card">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="senior-text-lg font-semibold mb-1 text-white">{stat.title}</h3>
-                      <p className="senior-text-2xl font-bold mb-1 text-white" aria-label={`${stat.title}: ${stat.value}`}>{stat.value}</p>
-                      <p className="senior-text-base text-gray-300">{stat.subtitle}</p>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base sm:text-lg font-semibold mb-1 text-white truncate">{stat.title}</h3>
+                      <p className="text-xl sm:text-2xl font-bold mb-1 text-white" aria-label={`${stat.title}: ${stat.value}`}>{stat.value}</p>
+                      <p className="text-sm sm:text-base text-gray-300 truncate">{stat.subtitle}</p>
                     </div>
-                    <div className="p-3 rounded-full bg-white/10 backdrop-blur-md" aria-hidden="true">
+                    <div className="p-2 sm:p-3 rounded-full bg-white/10 backdrop-blur-md flex-shrink-0 ml-2" aria-hidden="true">
                       {stat.icon}
                     </div>
                   </div>
@@ -273,18 +208,18 @@ export default function Dashboard() {
 
         {/* Overdue Medications Alert */}
         {overdueMedications.length > 0 && (
-          <section aria-label="Overdue medications alert" role="alert">
-            <Card className="glass-card border-red-400/30 bg-gradient-to-br from-red-500/20 to-red-600/10 mb-6">
-              <CardContent className="p-6">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-red-500/20 text-red-400 mr-4" aria-hidden="true">
-                    <Clock size={32} />
+          <section aria-label="Overdue medications alert" role="alert" className="mobile-section-spacing">
+            <Card className="glass-card border-red-400/30 bg-gradient-to-br from-red-500/20 to-red-600/10">
+              <CardContent className="mobile-card">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="p-3 rounded-full bg-red-500/20 text-red-400 flex-shrink-0" aria-hidden="true">
+                    <Clock size={28} />
                   </div>
-                  <div>
-                    <h3 className="senior-text-xl font-semibold text-red-400 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg sm:text-xl font-semibold text-red-400 mb-2">
                       ⚠️ Overdue Medications
                     </h3>
-                    <p className="senior-text-lg text-gray-300">
+                    <p className="text-base sm:text-lg text-gray-300">
                       You have {overdueMedications.length} medication{overdueMedications.length !== 1 ? 's' : ''} that should have been taken already.
                     </p>
                   </div>
@@ -295,16 +230,16 @@ export default function Dashboard() {
         )}
 
         {/* Daily Health Tip */}
-        <section aria-label="Daily health tip">
+        <section aria-label="Daily health tip" className="mobile-section-spacing">
           {!isMounted ? (
-            <Card className="health-tip-card mb-8 shimmer">
-              <CardContent className="p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400" aria-hidden="true">
-                    <Lightbulb size={32} />
+            <Card className="health-tip-card shimmer">
+              <CardContent className="mobile-card">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400 flex-shrink-0" aria-hidden="true">
+                    <Lightbulb size={28} />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-6 bg-gray-500/30 rounded w-1/3"></div>
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="h-5 sm:h-6 bg-gray-500/30 rounded w-1/3"></div>
                     <div className="h-4 bg-gray-500/30 rounded w-full"></div>
                     <div className="h-4 bg-gray-500/30 rounded w-3/4"></div>
                   </div>
@@ -312,41 +247,64 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           ) : isDailyTipLoading ? (
-            <Card className="health-tip-card mb-8 shimmer">
-              <CardContent className="p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400" aria-hidden="true">
-                    <Lightbulb size={32} />
+            <Card className="health-tip-card border-purple-400/30 bg-gradient-to-r from-purple-500/10 to-blue-500/10">
+              <CardContent className="mobile-card">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400 flex-shrink-0" aria-hidden="true">
+                    <Lightbulb size={28} className="animate-pulse" />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="h-6 bg-gray-500/30 rounded w-1/3"></div>
-                    <div className="h-4 bg-gray-500/30 rounded w-full"></div>
-                    <div className="h-4 bg-gray-500/30 rounded w-3/4"></div>
+                  <div className="flex-1 space-y-3 w-full">
+                    <div className="flex items-center gap-2">
+                      <h3 className="mobile-section-title font-semibold text-white">💡 Daily Health Tip</h3>
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-base sm:text-lg text-purple-200 animate-pulse">
+                        🤖 AI is generating a personalized health tip for you...
+                      </p>
+                      <div className="h-4 bg-purple-500/20 rounded w-full animate-pulse"></div>
+                      <div className="h-4 bg-purple-500/20 rounded w-3/4 animate-pulse"></div>
+                    </div>
+                    <div className="flex items-center justify-between pt-2">
+                      <div className="h-6 bg-purple-500/20 rounded-full w-20 animate-pulse"></div>
+                      <Button
+                        disabled
+                        size="sm"
+                        className="glass-button mobile-button opacity-50 cursor-not-allowed"
+                      >
+                        <RefreshCw size={16} className="mr-2 animate-spin text-purple-300" />
+                        <span className="text-sm">Generating...</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
           ) : dailyTip && (
-            <Card className="health-tip-card mb-8" tabIndex={0}>
-              <CardContent className="p-6">
-                <div className="flex items-start space-x-4">
-                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400" aria-hidden="true">
-                    <Lightbulb size={32} />
+            <Card className="health-tip-card mb-6 sm:mb-8" tabIndex={0}>
+              <CardContent className="mobile-card">
+                <div className="flex flex-col sm:flex-row items-start gap-4">
+                  <div className="p-3 rounded-full bg-purple-500/20 text-purple-400 flex-shrink-0" aria-hidden="true">
+                    <Lightbulb size={28} />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="senior-text-xl font-semibold mb-2 text-white">💡 Daily Health Tip</h3>
-                    <p className="senior-text-lg leading-relaxed mb-2 text-gray-200">{dailyTip.tip}</p>
-                    <div className="flex items-center justify-between">
-                      <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full senior-text-sm backdrop-blur-md">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="mobile-section-title font-semibold mb-2 text-white">💡 Daily Health Tip</h3>
+                    <p className="text-base sm:text-lg leading-relaxed mb-4 text-gray-200">{dailyTip.tip}</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <span className="inline-block px-3 py-1 bg-white/10 text-purple-300 rounded-full text-sm backdrop-blur-md">
                         {dailyTip.category}
                       </span>
                       <Button
                         onClick={() => refetchDailyTip()}
-                        disabled={isDailyTipLoading}
+                        disabled={isFetchingDailyTip}
                         size="sm"
                         className="glass-button"
                       >
-                        {isDailyTipLoading ? (
+                        {isFetchingDailyTip ? (
                           <RefreshCw size={16} className="mr-2 animate-spin" />
                         ) : (
                           <RefreshCw size={16} className="mr-2" />
@@ -362,14 +320,14 @@ export default function Dashboard() {
         </section>
 
         {/* Today's Medications */}
-        <section aria-label="Today's medication schedule">
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6 gap-4">
-              <h2 className="senior-text-2xl font-bold text-white">📋 Today&apos;s Medications</h2>
+        <section aria-label="Today's medication schedule" className="mobile-section-spacing">
+          <div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+              <h2 className="mobile-section-title font-bold text-white">📋 Today&apos;s Medications</h2>
               <Button
                 onClick={() => setShowAddMedication(true)}
                 size="lg"
-                className="glass-button-primary senior-text-lg px-4 sm:px-6 whitespace-nowrap"
+                className="glass-button-primary mobile-button"
                 data-testid="button-add-medication"
                 aria-label="Add a new medication"
               >
@@ -382,7 +340,7 @@ export default function Dashboard() {
             {medicationsLoading ? (
               <div className="space-y-4" aria-label="Loading medications" role="status">
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="glass-card h-32 rounded-lg shimmer" aria-hidden="true"></div>
+                  <div key={i} className="glass-card h-24 sm:h-32 rounded-lg shimmer" aria-hidden="true"></div>
                 ))}
                 <span className="sr-only">Loading your medications...</span>
               </div>
@@ -408,7 +366,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4" role="list" aria-label="Today's medication schedule">
+              <div className="mobile-card-spacing" role="list" aria-label="Today's medication schedule">
                 {todaysSchedule.map((medication) => (
                   <MedicationCard
                     key={`${medication.id}-${medication.scheduledTime}`}
@@ -426,41 +384,41 @@ export default function Dashboard() {
         </section>
 
         {/* Quick Actions */}
-        <section aria-label="Quick actions">
+        <section aria-label="Quick actions" className="mobile-section-spacing">
           <h2 className="sr-only">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
             <Link href="/schedule" className="focus-ring rounded-xl">
               <Card className="quick-action-card">
-                <CardContent className="p-6 text-center">
-                  <Calendar className="mx-auto mb-3 text-blue-400" size={40} aria-hidden="true" />
-                  <h4 className="font-semibold senior-text-lg text-white">📅 Schedule</h4>
-                  <p className="senior-text-sm text-gray-300">View weekly plan</p>
+                <CardContent className="mobile-card card-content-center">
+                  <Calendar className="mb-2 sm:mb-3 text-blue-400" size={32} aria-hidden="true" />
+                  <h4 className="font-semibold text-sm sm:text-base lg:text-lg text-white">📅 Schedule</h4>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">View weekly plan</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/health-tips" className="focus-ring rounded-xl">
               <Card className="quick-action-card">
-                <CardContent className="p-6 text-center">
-                  <Lightbulb className="mx-auto mb-3 text-yellow-400" size={40} aria-hidden="true" />
-                  <h4 className="font-semibold senior-text-lg text-white">💡 Health Tips</h4>
-                  <p className="senior-text-sm text-gray-300">Personalized advice</p>
+                <CardContent className="mobile-card card-content-center">
+                  <Lightbulb className="mb-2 sm:mb-3 text-yellow-400" size={32} aria-hidden="true" />
+                  <h4 className="font-semibold text-sm sm:text-base lg:text-lg text-white">💡 Health Tips</h4>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">Personalized advice</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/progress" className="focus-ring rounded-xl">
               <Card className="quick-action-card">
-                <CardContent className="p-6 text-center">
-                  <TrendingUp className="mx-auto mb-3 text-green-400" size={40} aria-hidden="true" />
-                  <h4 className="font-semibold senior-text-lg text-white">📈 Progress</h4>
-                  <p className="senior-text-sm text-gray-300">Track adherence</p>
+                <CardContent className="mobile-card card-content-center">
+                  <TrendingUp className="mb-2 sm:mb-3 text-green-400" size={32} aria-hidden="true" />
+                  <h4 className="font-semibold text-sm sm:text-base lg:text-lg text-white">📈 Progress</h4>
+                  <p className="text-xs sm:text-sm text-gray-300 mt-1">Track adherence</p>
                 </CardContent>
               </Card>
             </Link>
 
             <Card 
-              className="quick-action-card focus-ring rounded-xl"
+              className="quick-action-card focus-ring rounded-xl cursor-pointer"
               onClick={() => setShowEmergencyContactsDisplay(true)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -472,73 +430,15 @@ export default function Dashboard() {
               role="button"
               aria-label="View emergency contacts"
             >
-              <CardContent className="p-6 text-center">
-                <Heart className="mx-auto mb-3 text-red-400" size={40} aria-hidden="true" />
-                <h4 className="font-semibold senior-text-lg text-white">🚨 Emergency</h4>
-                <p className="senior-text-sm text-gray-300">Quick contacts</p>
+              <CardContent className="mobile-card card-content-center">
+                <Heart className="mb-2 sm:mb-3 text-red-400" size={32} aria-hidden="true" />
+                <h4 className="font-semibold text-sm sm:text-base lg:text-lg text-white">🚨 Emergency</h4>
+                <p className="text-xs sm:text-sm text-gray-300 mt-1">Quick contacts</p>
               </CardContent>
             </Card>
           </div>
         </section>
-
-        {/* Bottom Spacing for Navigation */}
-        <div className="h-24" aria-hidden="true"></div>
       </main>
-
-      {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 glass-card border-t border-white/10 p-4 z-30" role="navigation" aria-label="Main navigation">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center space-x-8">
-            <Button
-              variant="ghost"
-              size="lg"
-              className="glass-button-primary senior-text-lg large-touch-target interactive-feedback focus-ring-button"
-              data-testid="nav-dashboard"
-              aria-label="Dashboard - Current page"
-              aria-current="page"
-            >
-              <Home size={28} aria-hidden="true" />
-              <span className="ml-2">Home</span>
-            </Button>
-            <Link href="/schedule" className="focus-ring rounded-lg">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="glass-button senior-text-lg text-gray-300 hover:text-white large-touch-target interactive-feedback focus-ring-button"
-                data-testid="nav-schedule"
-                aria-label="Go to schedule page"
-              >
-                <Calendar size={28} aria-hidden="true" />
-                <span className="ml-2">Schedule</span>
-              </Button>
-            </Link>
-            <Link href="/health-tips" className="focus-ring rounded-lg">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="glass-button senior-text-lg text-gray-300 hover:text-white large-touch-target interactive-feedback focus-ring-button"
-                data-testid="nav-health-tips"
-                aria-label="Go to health tips page"
-              >
-                <Lightbulb size={28} aria-hidden="true" />
-                <span className="ml-2">Tips</span>
-              </Button>
-            </Link>
-            <Link href="/progress" className="focus-ring rounded-lg">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="glass-button senior-text-lg text-gray-300 hover:text-white large-touch-target interactive-feedback focus-ring-button"
-                data-testid="nav-progress"
-                aria-label="Go to progress page"
-              >
-                <TrendingUp size={28} aria-hidden="true" />
-                <span className="ml-2">Progress</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
 
       {/* Dialogs */}
       <AddMedicationDialog
@@ -554,6 +454,6 @@ export default function Dashboard() {
         open={showEmergencyContactsDisplay}
         onClose={() => setShowEmergencyContactsDisplay(false)}
       />
-    </div>
+    </AppLayout>
   );
 }

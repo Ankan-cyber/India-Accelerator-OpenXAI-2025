@@ -3,39 +3,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import Link from "next/link";
+import AppLayout from "@/components/app-layout";
+import AppHeader from "@/components/app-header";
 import {
-  Home,
-  Calendar,
-  Lightbulb,
-  TrendingUp,
   PillBottle,
-  Settings,
   Clock,
   ChevronLeft,
   ChevronRight,
-  Phone,
-  LogOut,
+  Calendar,
 } from "lucide-react";
 import { useState } from "react";
 import type { IMedication, IMedicationLog } from "@/lib/models";
-import { useAuth } from "@/components/providers/auth-provider";
-import { useToast } from "@/hooks/use-toast";
 import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-display-dialog";
 
 export default function Schedule() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
-  const { logout } = useAuth();
-  const { toast } = useToast();
-
-  const handleLogout = () => {
-    logout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-  };
 
   const { data: medications = [] } = useQuery<IMedication[]>({
     queryKey: ['/api/medications'],
@@ -94,61 +77,17 @@ export default function Schedule() {
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
-    <div className="min-h-screen relative z-10">
-      {/* Floating Orbs */}
-      <div className="floating-orb w-64 h-64 bg-purple-500/20 -top-32 -left-32"></div>
-      <div className="floating-orb w-48 h-48 bg-cyan-500/15 top-1/3 -right-24" style={{ animationDelay: '-2s' }}></div>
-      <div className="floating-orb w-32 h-32 bg-emerald-500/20 bottom-1/4 left-1/4" style={{ animationDelay: '-4s' }}></div>
-
-      {/* Header */}
-      <header className="dashboard-header border-b border-white/10 p-6 relative z-20">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4">
-                <h1 className="text-2xl sm:text-4xl font-bold text-white">
-                  Weekly Schedule 📅
-                </h1>
-              </div>
-              <p className="text-base sm:text-xl text-gray-300">Your medication schedule at a glance</p>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => setShowEmergencyContacts(true)}
-                className="glass-button-primary senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <Phone size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Emergency</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-                onClick={() => toast({ title: "Coming Soon!", description: "Settings page is under construction."})}
-              >
-                <Settings size={16} className="sm:mr-2" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button
-                variant="destructive"
-                size="lg"
-                onClick={handleLogout}
-                className="glass-button senior-text-lg px-3 sm:px-4 large-touch-target interactive-feedback focus-ring-button"
-              >
-                <LogOut size={20} className="sm:mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <AppLayout>
+      <AppHeader 
+        title="Weekly Schedule 📅"
+        subtitle="Your medication schedule at a glance"
+        onEmergencyContacts={() => setShowEmergencyContacts(true)}
+      />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-6 relative z-10">
+      <main className="max-w-7xl mx-auto mobile-padding p-6 relative z-10">
         {/* Week Navigation */}
-        <Card className="glass-card border-white/20 mb-8">
+        <Card className="glass-card border-white/20 mobile-section-spacing">
           <CardContent className="p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <Button
@@ -196,7 +135,7 @@ export default function Schedule() {
         </Card>
 
         {/* Weekly Schedule - Clean Day-by-Day View */}
-        <div className="space-y-6 mb-8">
+        <div className="mobile-card-spacing mobile-section-spacing">
           {weekDates.map((date, index) => {
             const daySchedule = getDaySchedule(date);
             const isToday = date.toDateString() === today;
@@ -373,56 +312,6 @@ export default function Schedule() {
         open={showEmergencyContacts}
         onClose={() => setShowEmergencyContacts(false)}
       />
-
-      {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 dashboard-navigation border-t border-white/10 p-4 z-30">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center space-x-8">
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-dashboard"
-              >
-                <Home size={24} />
-                <span className="ml-2">Home</span>
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="lg"
-              className="nav-button active text-lg text-white"
-              data-testid="nav-schedule"
-            >
-              <Calendar size={24} />
-              <span className="ml-2">Schedule</span>
-            </Button>
-            <Link href="/health-tips">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-health-tips"
-              >
-                <Lightbulb size={24} />
-                <span className="ml-2">Tips</span>
-              </Button>
-            </Link>
-            <Link href="/progress">
-              <Button
-                variant="ghost"
-                size="lg"
-                className="nav-button text-lg text-gray-300 hover:text-white"
-                data-testid="nav-progress"
-              >
-                <TrendingUp size={24} />
-                <span className="ml-2">Progress</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
-    </div>
+    </AppLayout>
   );
 }
