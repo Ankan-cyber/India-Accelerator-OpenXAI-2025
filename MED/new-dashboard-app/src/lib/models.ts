@@ -15,6 +15,8 @@ const medicationSchema = new Schema({
   dosage: { type: String, required: true },
   instructions: { type: String },
   times: [{ type: String, required: true }], // Array of time strings like "09:00"
+  startDate: { type: Date, default: Date.now }, // When to start taking medication
+  endDate: { type: Date }, // When to stop taking medication (optional)
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 })
@@ -37,6 +39,16 @@ const emergencyContactSchema = new Schema({
   isPrimary: { type: Boolean, default: false },
 })
 
+// User Settings Schema
+const userSettingsSchema = new Schema({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+  keepLogsAfterDeletion: { type: Boolean, default: false },
+  notificationsEnabled: { type: Boolean, default: true },
+  reminderInterval: { type: Number, default: 15 }, // minutes before scheduled time
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+})
+
 // Types
 export interface IUser {
   _id?: string
@@ -55,6 +67,8 @@ export interface IMedication {
   dosage: string
   instructions?: string
   times: string[]
+  startDate: Date
+  endDate?: Date
   isActive: boolean
   createdAt: Date
 }
@@ -79,12 +93,25 @@ export interface IEmergencyContact {
   isPrimary: boolean
 }
 
+export interface IUserSettings {
+  _id?: string
+  id?: string
+  userId: string
+  keepLogsAfterDeletion: boolean
+  notificationsEnabled: boolean
+  reminderInterval: number
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface InsertMedication {
   userId: string
   name: string
   dosage: string
   instructions?: string
   times: string[]
+  startDate?: Date
+  endDate?: Date
   isActive: boolean
 }
 
@@ -104,8 +131,16 @@ export interface InsertEmergencyContact {
   isPrimary: boolean
 }
 
+export interface InsertUserSettings {
+  userId: string
+  keepLogsAfterDeletion: boolean
+  notificationsEnabled: boolean
+  reminderInterval: number
+}
+
 // Models
 export const User = models.User || model<IUser>('User', userSchema)
 export const Medication = models.Medication || model<IMedication>('Medication', medicationSchema)
 export const MedicationLog = models.MedicationLog || model<IMedicationLog>('MedicationLog', medicationLogSchema)
 export const EmergencyContact = models.EmergencyContact || model<IEmergencyContact>('EmergencyContact', emergencyContactSchema)
+export const UserSettings = models.UserSettings || model<IUserSettings>('UserSettings', userSettingsSchema)

@@ -48,7 +48,7 @@ export default function Progress() {
     },
   });
 
-  // Calculate progress statistics
+  // Calculate progress statistics with medication date ranges
   const calculateStats = () => {
     const now = new Date();
     const filterDate = new Date();
@@ -65,31 +65,114 @@ export default function Progress() {
       new Date(log.date) >= filterDate
     );
 
-    // Calculate total expected doses in the time range
-    const days = Math.max(1, Math.ceil((now.getTime() - filterDate.getTime()) / (1000 * 60 * 60 * 24)));
-    const totalExpected = medications.reduce((acc, med) => acc + (med.times.length * days), 0);
+    // Calculate total expected doses in the time range, considering medication start/end dates
+    let totalExpected = 0;
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    // For each day in the range, calculate expected doses based on active medications
+    for (let currentDate = new Date(filterDate); currentDate <= endDate; currentDate.setDate(currentDate.getDate() + 1)) {
+      const dayString = currentDate.toISOString().split('T')[0];
+      
+      medications.forEach(med => {
+        const createdDate = new Date(med.createdAt);
+        const medStartDate = med.startDate ? new Date(med.startDate) : createdDate;
+        const medEndDate = med.endDate ? new Date(med.endDate) : null;
+        
+        // Check if medication was active on this day
+        const dayDate = new Date(dayString);
+        const isAfterCreation = dayDate >= createdDate;
+        const isAfterStart = dayDate >= medStartDate;
+        const isBeforeEnd = !medEndDate || dayDate <= medEndDate;
+        
+        if (isAfterCreation && isAfterStart && isBeforeEnd) {
+          totalExpected += med.times.length;
+        }
+      });
+    }
+
     const totalTaken = filteredLogs.length;
     const adherenceRate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 0;
 
-    // Calculate streaks
+    // Calculate current streak - consecutive days of perfect adherence
     const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     let currentStreak = 0;
-    const checkDate = new Date();
-    checkDate.setHours(0, 0, 0, 0);
-
-    while (true) {
-      const dateString = checkDate.toISOString().split('T')[0];
-      const dayLogs = sortedLogs.filter(log => log.date === dateString);
-      const expectedForDay = medications.reduce((acc, med) => acc + med.times.length, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if today is complete first
+    const todayString = today.toISOString().split('T')[0];
+    const todayLogs = sortedLogs.filter(log => log.date === todayString);
+    let todayExpected = 0;
+    
+    medications.forEach(med => {
+      const createdDate = new Date(med.createdAt);
+      const medStartDate = med.startDate ? new Date(med.startDate) : createdDate;
+      const medEndDate = med.endDate ? new Date(med.endDate) : null;
       
-      if (expectedForDay === 0 || dayLogs.length >= expectedForDay) {
-        currentStreak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else {
-        break;
+      const isAfterCreation = today >= createdDate;
+      const isAfterStart = today >= medStartDate;
+      const isBeforeEnd = !medEndDate || today <= medEndDate;
+      
+      if (isAfterCreation && isAfterStart && isBeforeEnd) {
+        todayExpected += med.times.length;
       }
+    });
+    
+    // Start checking from today if it's complete, otherwise start from yesterday
+    const checkDate = new Date(today);
+    if (todayExpected > 0 && todayLogs.length >= todayExpected) {
+      currentStreak = 1; // Today is complete
+      checkDate.setDate(today.getDate() - 1); // Start checking from yesterday
+    } else if (todayExpected === 0) {
+      // No medications expected today, start from yesterday
+      checkDate.setDate(today.getDate() - 1);
+    } else {
+      // Today is incomplete, start from yesterday
+      checkDate.setDate(today.getDate() - 1);
+    }
+
+    // Only check up to 365 days or until we find the first medication
+    const earliestMedicationDate = medications.length > 0 
+      ? Math.min(...medications.map(med => new Date(med.createdAt).getTime()))
+      : Date.now();
+    
+    while (checkDate.getTime() >= earliestMedicationDate) {
+      const dateString = checkDate.toISOString().split('T')[0];
+      const dayDate = new Date(dateString);
+      const dayLogs = sortedLogs.filter(log => log.date === dateString);
       
-      if (currentStreak > 365) break; // Safety break
+      // Calculate expected doses for this day based on active medications
+      let expectedForDay = 0;
+      medications.forEach(med => {
+        const createdDate = new Date(med.createdAt);
+        const medStartDate = med.startDate ? new Date(med.startDate) : createdDate;
+        const medEndDate = med.endDate ? new Date(med.endDate) : null;
+        
+        const isAfterCreation = dayDate >= createdDate;
+        const isAfterStart = dayDate >= medStartDate;
+        const isBeforeEnd = !medEndDate || dayDate <= medEndDate;
+        
+        if (isAfterCreation && isAfterStart && isBeforeEnd) {
+          expectedForDay += med.times.length;
+        }
+      });
+      
+      // Only count days where medications were expected
+      if (expectedForDay > 0) {
+        if (dayLogs.length >= expectedForDay) {
+          currentStreak++;
+        } else {
+          // Streak broken - stop counting
+          break;
+        }
+      }
+      // If no medications expected on this day, continue without breaking streak
+      
+      checkDate.setDate(checkDate.getDate() - 1);
+      
+      // Safety break to prevent infinite loops
+      if (currentStreak > 365) break;
     }
 
     return {
@@ -103,7 +186,7 @@ export default function Progress() {
 
   const stats = calculateStats();
 
-  // Get daily adherence for the last 30 days
+  // Get daily adherence for the last 30 days with medication date ranges
   const getDailyAdherence = () => {
     const days = [];
     const now = new Date();
@@ -115,7 +198,23 @@ export default function Progress() {
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
       
       const dayLogs = logs.filter(log => log.date === dateString);
-      const expectedForDay = medications.reduce((acc, med) => acc + med.times.length, 0);
+      
+      // Calculate expected doses for this day based on active medications
+      let expectedForDay = 0;
+      medications.forEach(med => {
+        const createdDate = new Date(med.createdAt);
+        const medStartDate = med.startDate ? new Date(med.startDate) : createdDate;
+        const medEndDate = med.endDate ? new Date(med.endDate) : null;
+        
+        const isAfterCreation = date >= createdDate;
+        const isAfterStart = date >= medStartDate;
+        const isBeforeEnd = !medEndDate || date <= medEndDate;
+        
+        if (isAfterCreation && isAfterStart && isBeforeEnd) {
+          expectedForDay += med.times.length;
+        }
+      });
+      
       const adherence = expectedForDay > 0 ? Math.round((dayLogs.length / expectedForDay) * 100) : 0;
       
       days.push({
@@ -131,11 +230,32 @@ export default function Progress() {
 
   const dailyAdherence = getDailyAdherence();
 
-  // Get medication-specific stats
+  // Get medication-specific stats with date-based calculation
   const getMedicationStats = () => {
     return medications.map(med => {
       const medLogs = logs.filter(log => log.medicationId === med.id);
-      const totalExpected = med.times.length * 30; // Last 30 days
+      
+      // Calculate expected doses for the last 30 days for this medication
+      let totalExpected = 0;
+      const now = new Date();
+      
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        
+        const createdDate = new Date(med.createdAt);
+        const medStartDate = med.startDate ? new Date(med.startDate) : createdDate;
+        const medEndDate = med.endDate ? new Date(med.endDate) : null;
+        
+        const isAfterCreation = date >= createdDate;
+        const isAfterStart = date >= medStartDate;
+        const isBeforeEnd = !medEndDate || date <= medEndDate;
+        
+        if (isAfterCreation && isAfterStart && isBeforeEnd) {
+          totalExpected += med.times.length;
+        }
+      }
+      
       const adherence = totalExpected > 0 ? Math.round((medLogs.length / totalExpected) * 100) : 0;
       
       return {
@@ -218,7 +338,9 @@ export default function Progress() {
                 <div>
                   <h3 className="text-lg font-semibold mb-1 text-white">Current Streak</h3>
                   <p className="text-3xl font-bold mb-1 text-purple-400">{stats.currentStreak}</p>
-                  <p className="text-sm text-gray-300">perfect days</p>
+                  <p className="text-sm text-gray-300">
+                    {stats.currentStreak === 1 ? 'perfect day' : 'perfect days'}
+                  </p>
                 </div>
                 <div className="p-3 rounded-full bg-white/10 backdrop-blur-md">
                   <Trophy className="text-purple-400" size={28} />

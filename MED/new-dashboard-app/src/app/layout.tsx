@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   title: 'PillPal - Your Medication Companion',
   description: 'A user-friendly medication tracking app designed for seniors with AI-powered health tips and smart reminders.',
   keywords: 'medication tracking, pill reminder, health app, seniors, AI health tips',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   openGraph: {
     title: 'PillPal - Your Medication Companion',
     description: 'A user-friendly medication tracking app designed for seniors with AI-powered health tips and smart reminders.',
@@ -19,6 +18,13 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -27,7 +33,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="no-scroll-x">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

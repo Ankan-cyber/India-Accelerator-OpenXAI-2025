@@ -103,34 +103,109 @@ export default function Dashboard() {
       if (!response.ok) throw new Error('Failed to mark medication as taken');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs', today] });
-      toast({
-        title: "Medication marked as taken",
-        description: "Great job staying on track with your medication!",
-      });
+    onMutate: async ({ medicationId, scheduledTime }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['/api/medication-logs'] });
+
+      // Snapshot the previous value
+      const previousLogs = queryClient.getQueryData(['/api/medication-logs']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['/api/medication-logs'], (old: IMedicationLog[] = []) => [
+        ...old,
+        {
+          id: `temp-${Date.now()}`,
+          userId: 'current-user',
+          medicationId,
+          takenAt: new Date(),
+          scheduledTime,
+          date: today,
+        }
+      ]);
+
+      return { previousLogs };
     },
-    onError: () => {
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['/api/medication-logs'], context.previousLogs);
+      }
       toast({
         title: "Error",
         description: "Failed to mark medication as taken. Please try again.",
         variant: "destructive",
       });
     },
+    onSuccess: () => {
+      // Invalidate all medication-related queries for real-time updates
+      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
+      toast({
+        title: "Medication marked as taken",
+        description: "Great job staying on track with your medication!",
+      });
+    },
+  });
+
+  // Delete medication mutation
+  const deleteMedicationMutation = useMutation({
+    mutationFn: async (medicationId: string) => {
+      const response = await fetch(`/api/medications/${medicationId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete medication');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs', today] });
+      toast({
+        title: "Medication deleted",
+        description: "The medication has been successfully removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete medication. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Get today's medication schedule
-  const todaysSchedule = medications.flatMap(medication =>
-    medication.times.map(time => ({
-      ...medication,
-      scheduledTime: time,
-      isTaken: logs.some(log =>
-        log.medicationId === medication.id &&
-        log.scheduledTime === time &&
-        log.date === today
-      )
-    }))
-  ).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+  const todaysSchedule = medications
+    .filter(medication => {
+      // Only include medications that should be active today
+      const currentDate = new Date(today);
+      const createdDate = new Date(medication.createdAt);
+      const startDate = medication.startDate ? new Date(medication.startDate) : createdDate;
+      const endDate = medication.endDate ? new Date(medication.endDate) : null;
+      
+      // Ensure we don't show medications before they were created
+      const isAfterCreation = currentDate >= new Date(createdDate.toISOString().split('T')[0]);
+      
+      // Check if today is after the start date
+      const isAfterStart = currentDate >= new Date(startDate.toISOString().split('T')[0]);
+      
+      // Check if today is before the end date (if end date exists)
+      const isBeforeEnd = !endDate || currentDate <= new Date(endDate.toISOString().split('T')[0]);
+      
+      // Only include active medications that fall within the date range and after creation
+      return medication.isActive && isAfterCreation && isAfterStart && isBeforeEnd;
+    })
+    .flatMap(medication =>
+      medication.times.map(time => ({
+        ...medication,
+        scheduledTime: time,
+        isTaken: logs.some(log =>
+          log.medicationId === medication.id &&
+          log.scheduledTime === time &&
+          log.date === today
+        )
+      }))
+    )
+    .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
 
   // Calculate next medications
   const upcomingMedications = todaysSchedule.filter(med => 
@@ -375,6 +450,7 @@ export default function Dashboard() {
                       medicationId: medication.id!,
                       scheduledTime: medication.scheduledTime
                     })}
+                    onDelete={() => deleteMedicationMutation.mutate(medication.id!)}
                     isLoading={markTakenMutation.isPending}
                   />
                 ))}

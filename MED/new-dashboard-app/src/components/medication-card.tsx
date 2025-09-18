@@ -2,8 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, PillBottle } from "lucide-react";
+import { Check, PillBottle, Trash2, MoreVertical } from "lucide-react";
 import type { IMedication } from "@/lib/models";
+import { useState, useEffect, useRef } from "react";
 
 interface MedicationCardProps {
   medication: IMedication & { 
@@ -11,10 +12,48 @@ interface MedicationCardProps {
     isTaken?: boolean; 
   };
   onMarkAsTaken: () => void;
+  onDelete?: () => void;
   isLoading?: boolean;
 }
 
-export function MedicationCard({ medication, onMarkAsTaken, isLoading }: MedicationCardProps) {
+export function MedicationCard({ medication, onMarkAsTaken, onDelete, isLoading }: MedicationCardProps) {
+  const [showActions, setShowActions] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowActions(false);
+      }
+    }
+
+    if (showActions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showActions]);
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${medication.name}? This action cannot be undone.`
+    );
+    
+    if (confirmed) {
+      setIsDeleting(true);
+      try {
+        await onDelete();
+      } catch (error) {
+        console.error('Error deleting medication:', error);
+      } finally {
+        setIsDeleting(false);
+        setShowActions(false);
+      }
+    }
+  };
+
   const getMedicationColor = (index: number) => {
     const colors = [
       "bg-blue-500/20 text-blue-400 border-blue-400/30",
@@ -103,31 +142,59 @@ export function MedicationCard({ medication, onMarkAsTaken, isLoading }: Medicat
                 {medication.isTaken ? '✅ Taken' : '⏳ Pending'}
               </p>
             </div>
-            {!medication.isTaken && (
-              <Button
-                onClick={onMarkAsTaken}
-                disabled={isLoading}
-                size="lg"
-                className="glass-button-primary text-base sm:text-lg px-4 py-2 sm:px-6 sm:py-3 w-full sm:w-auto large-touch-target interactive-feedback focus-ring-button"
-                data-testid={`button-mark-taken-${medication.id}`}
-                aria-label={`Mark ${medication.name} as taken`}
-                aria-describedby={`medication-name-${medication.id}`}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⏳</span>
-                    <span className="hidden sm:inline">Marking...</span>
-                    <span className="sm:hidden">...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check size={20} className="mr-2" aria-hidden="true" />
-                    <span className="hidden sm:inline">Mark Taken</span>
-                    <span className="sm:hidden">Mark</span>
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="flex flex-col sm:flex-row gap-2">
+              {!medication.isTaken && (
+                <Button
+                  onClick={onMarkAsTaken}
+                  disabled={isLoading}
+                  size="lg"
+                  className="glass-button-primary text-base sm:text-lg px-4 py-2 sm:px-6 sm:py-3 w-full sm:w-auto large-touch-target interactive-feedback focus-ring-button"
+                  data-testid={`button-mark-taken-${medication.id}`}
+                  aria-label={`Mark ${medication.name} as taken`}
+                  aria-describedby={`medication-name-${medication.id}`}
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="inline-block animate-spin mr-2">⏳</span>
+                      <span className="hidden sm:inline">Marking...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={20} className="mr-2" aria-hidden="true" />
+                      <span className="hidden sm:inline">Mark Taken</span>
+                      <span className="sm:hidden">Mark</span>
+                    </>
+                  )}
+                </Button>
+              )}
+              {onDelete && (
+                <div className="relative" ref={dropdownRef}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowActions(!showActions)}
+                    className="glass-button-secondary p-2 large-touch-target"
+                    aria-label="More options"
+                  >
+                    <MoreVertical size={16} />
+                  </Button>
+                  
+                  {showActions && (
+                    <div className="absolute right-0 top-full mt-1 w-36 bg-black/80 backdrop-blur-md border border-white/20 rounded-lg shadow-lg z-10">
+                      <button
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20 disabled:opacity-50 flex items-center rounded-lg"
+                      >
+                        <Trash2 size={16} className="mr-2" />
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Phone, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '@/components/providers/auth-provider'
 import { useToast } from '@/hooks/use-toast'
+import { SettingsDialog } from '@/components/settings-dialog'
+import { useState } from 'react'
 
 interface AppHeaderProps {
   title?: string
@@ -24,6 +26,7 @@ export default function AppHeader({
 }: AppHeaderProps) {
   const { logout } = useAuth()
   const { toast } = useToast()
+  const [showSettings, setShowSettings] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -34,10 +37,7 @@ export default function AppHeader({
   }
 
   const handleSettings = () => {
-    toast({ 
-      title: "Coming Soon!", 
-      description: "Settings page is under construction."
-    })
+    setShowSettings(true)
   }
 
   return (
@@ -46,14 +46,14 @@ export default function AppHeader({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 lg:gap-6">
           <div className="flex-1 min-w-0 w-full sm:w-auto">
             {greeting && (
-              <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4 lg:gap-6">
+                <div className="flex items-center mb-2 flex-wrap gap-2 sm:gap-4 lg:gap-6">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white" id="main-heading">
                   {greeting} 👋
                 </h1>
-                <div className="glass-button-primary px-3 sm:px-4 lg:px-6 py-1 sm:py-2 lg:py-3 rounded-full lg:rounded-2xl" aria-label="PillPal Application">
+                <div className="glass-button-primary px-4 py-2 rounded-full" aria-label="PillPal Application">
                   <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold">💊 PillPal</span>
                 </div>
-              </div>
+                </div>
             )}
             
             {title && !greeting && (
@@ -61,7 +61,7 @@ export default function AppHeader({
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold text-white" id="main-heading">
                   {title}
                 </h1>
-                <div className="glass-button-primary px-3 sm:px-4 lg:px-6 py-1 sm:py-2 lg:py-3 rounded-full lg:rounded-2xl" aria-label="PillPal Application">
+                <div className="glass-button-primary px-4 py-2 rounded-full" aria-label="PillPal Application">
                   <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold">💊 PillPal</span>
                 </div>
               </div>
@@ -82,49 +82,51 @@ export default function AppHeader({
             {children}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4 lg:gap-6 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 lg:gap-6 w-full sm:w-auto">
             {onEmergencyContacts && (
               <Button
                 variant="outline"
                 size="lg"
                 onClick={onEmergencyContacts}
-                className="glass-button-primary mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg"
+                className="glass-button-primary mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg px-4 py-3"
                 data-testid="button-emergency-contacts"
                 aria-label="View emergency contacts"
               >
-                <Phone size={20} className="sm:mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
-                <span className="hidden sm:inline">Emergency</span>
-                <span className="sm:hidden text-sm">Emergency</span>
+                <Phone size={18} className="mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
+                <span className="text-sm sm:text-base lg:text-lg">Emergency</span>
               </Button>
             )}
 
             <Button
               variant="outline" 
               size="lg"
-              className="glass-button mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg"
+              className="glass-button mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg px-4 py-3"
               data-testid="button-settings"
               aria-label="Open settings"
               onClick={handleSettings}
             >
-              <Settings size={20} className="sm:mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
-              <span className="hidden sm:inline">Settings</span>
-              <span className="sm:hidden text-sm">Settings</span>
+              <Settings size={18} className="mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
+              <span className="text-sm sm:text-base lg:text-lg">Settings</span>
             </Button>
 
             <Button
               variant="destructive"
               size="lg"
               onClick={handleLogout}
-              className="glass-button mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg"
+              className="glass-button mobile-button large-touch-target interactive-feedback focus-ring-button lg:px-6 lg:py-3 lg:text-lg px-4 py-3"
               aria-label="Logout"
             >
-              <LogOut size={20} className="sm:mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
-              <span className="hidden sm:inline">Logout</span>
-              <span className="sm:hidden text-sm">Logout</span>
+              <LogOut size={18} className="mr-2 lg:mr-3 lg:w-6 lg:h-6" aria-hidden="true" />
+              <span className="text-sm sm:text-base lg:text-lg">Logout</span>
             </Button>
           </div>
         </div>
       </div>
+      
+      <SettingsDialog 
+        open={showSettings} 
+        onOpenChange={setShowSettings} 
+      />
     </header>
   )
 }

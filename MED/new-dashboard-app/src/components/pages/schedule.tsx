@@ -1,16 +1,18 @@
 "use client"
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AppLayout from "@/components/app-layout";
 import AppHeader from "@/components/app-header";
+import { useToast } from "@/hooks/use-toast";
 import {
   PillBottle,
   Clock,
   ChevronLeft,
   ChevronRight,
   Calendar,
+  Check,
 } from "lucide-react";
 import { useState } from "react";
 import type { IMedication, IMedicationLog } from "@/lib/models";
@@ -19,6 +21,8 @@ import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-
 export default function Schedule() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: medications = [] } = useQuery<IMedication[]>({
     queryKey: ['/api/medications'],
@@ -35,6 +39,67 @@ export default function Schedule() {
       const response = await fetch('/api/medication-logs');
       if (!response.ok) throw new Error('Failed to fetch medication logs');
       return response.json();
+    },
+  });
+
+  // Mark medication as taken mutation
+  const markTakenMutation = useMutation({
+    mutationFn: async ({ medicationId, scheduledTime, date }: { medicationId: string; scheduledTime: string; date: string }) => {
+      const response = await fetch('/api/medication-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          medicationId,
+          scheduledTime,
+          date,
+          takenAt: new Date().toISOString(),
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to mark medication as taken');
+      return response.json();
+    },
+    onMutate: async ({ medicationId, scheduledTime, date }) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['/api/medication-logs'] });
+
+      // Snapshot the previous value
+      const previousLogs = queryClient.getQueryData(['/api/medication-logs']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['/api/medication-logs'], (old: IMedicationLog[] = []) => [
+        ...old,
+        {
+          id: `temp-${Date.now()}`,
+          userId: 'current-user',
+          medicationId,
+          takenAt: new Date(),
+          scheduledTime,
+          date,
+        }
+      ]);
+
+      // Return a context with the previous and new logs
+      return { previousLogs };
+    },
+    onError: (err, variables, context) => {
+      // If the mutation fails, use the context we returned above
+      if (context?.previousLogs) {
+        queryClient.setQueryData(['/api/medication-logs'], context.previousLogs);
+      }
+      toast({
+        title: "Error",
+        description: "Failed to mark medication as taken. Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSuccess: () => {
+      // Invalidate queries to ensure we have the latest data
+      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
+      toast({
+        title: "Medication marked as taken",
+        description: "Great job staying on track with your medication!",
+      });
     },
   });
 
@@ -60,18 +125,40 @@ export default function Schedule() {
   // Get schedule for a specific day
   const getDaySchedule = (date: Date) => {
     const dateString = date.toISOString().split('T')[0];
-    return medications.flatMap(medication =>
-      medication.times.map(time => ({
-        ...medication,
-        scheduledTime: time,
-        date: dateString,
-        isTaken: logs.some(log =>
-          log.medicationId === medication.id &&
-          log.scheduledTime === time &&
-          log.date === dateString
-        )
-      }))
-    ).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
+    const currentDate = new Date(dateString);
+    
+    return medications
+      .filter(medication => {
+        // Only include medications that should be active on this date
+        const createdDate = new Date(medication.createdAt);
+        const startDate = medication.startDate ? new Date(medication.startDate) : createdDate;
+        const endDate = medication.endDate ? new Date(medication.endDate) : null;
+        
+        // Ensure we don't show medications before they were created
+        const isAfterCreation = currentDate >= new Date(createdDate.toISOString().split('T')[0]);
+        
+        // Check if the current date is after the start date
+        const isAfterStart = currentDate >= new Date(startDate.toISOString().split('T')[0]);
+        
+        // Check if the current date is before the end date (if end date exists)
+        const isBeforeEnd = !endDate || currentDate <= new Date(endDate.toISOString().split('T')[0]);
+        
+        // Only include active medications that fall within the date range and after creation
+        return medication.isActive && isAfterCreation && isAfterStart && isBeforeEnd;
+      })
+      .flatMap(medication =>
+        medication.times.map(time => ({
+          ...medication,
+          scheduledTime: time,
+          date: dateString,
+          isTaken: logs.some(log =>
+            log.medicationId === medication.id &&
+            log.scheduledTime === time &&
+            log.date === dateString
+          )
+        }))
+      )
+      .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   };
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -256,7 +343,29 @@ export default function Schedule() {
                               }`}>
                                 {item.scheduledTime}
                               </span>
-                              {!item.isTaken && (
+                              {!item.isTaken && date.toDateString() <= new Date().toDateString() ? (
+                                <Button
+                                  onClick={() => markTakenMutation.mutate({
+                                    medicationId: item.id!,
+                                    scheduledTime: item.scheduledTime,
+                                    date: item.date
+                                  })}
+                                  disabled={markTakenMutation.isPending}
+                                  size="sm"
+                                  className="glass-button-primary text-xs px-3 py-1 h-auto"
+                                >
+                                  {markTakenMutation.isPending ? (
+                                    <span className="inline-block animate-spin mr-1">⏳</span>
+                                  ) : (
+                                    <Check size={12} className="mr-1" />
+                                  )}
+                                  {markTakenMutation.isPending ? 'Marking...' : 'Mark Taken'}
+                                </Button>
+                              ) : !item.isTaken && date.toDateString() > new Date().toDateString() ? (
+                                <span className="text-xs text-gray-500 px-3 py-1 bg-gray-500/10 rounded-md">
+                                  Future
+                                </span>
+                              ) : (
                                 <Clock className="text-gray-400" size={16} />
                               )}
                             </div>
