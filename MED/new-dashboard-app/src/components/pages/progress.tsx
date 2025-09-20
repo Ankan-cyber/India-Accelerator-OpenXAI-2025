@@ -48,22 +48,48 @@ export default function Progress() {
     },
   });
 
+  // Helper function to safely get date from log
+  const getLogDate = (log: IMedicationLog): string | null => {
+    if (log.logDate) {
+      if (log.logDate instanceof Date) {
+        return log.logDate.toISOString().split('T')[0];
+      } else {
+        return new Date(log.logDate).toISOString().split('T')[0];
+      }
+    }
+    return log.date || null;
+  };
+
   // Calculate progress statistics with medication date ranges
-  const calculateStats = () => {
-    const now = new Date();
+  const calculateAdherence = (logs: IMedicationLog[], medications: IMedication[]) => {
+
+    // Default values in case of empty data
+    if (!logs.length || !medications.length) {
+      return {
+        adherenceRate: 0,
+        totalTaken: 0,
+        totalExpected: 0,
+        currentStreak: 0,
+        missedDoses: 0
+      };
+    }
+
     const filterDate = new Date();
-    
     if (timeRange === 'week') {
-      filterDate.setDate(now.getDate() - 7);
+      filterDate.setDate(filterDate.getDate() - 7);
     } else if (timeRange === 'month') {
-      filterDate.setDate(now.getDate() - 30);
+      filterDate.setMonth(filterDate.getMonth() - 1);
     } else {
       filterDate.setTime(0); // All time
     }
 
-    const filteredLogs = logs.filter(log => 
-      new Date(log.date) >= filterDate
-    );
+    const filteredLogs = logs.filter(log => {
+      // Use logDate if available, fallback to date field, or skip if neither exists
+      const logDateValue = log.logDate || log.date;
+      if (!logDateValue) return false;
+      
+      return new Date(logDateValue) >= filterDate;
+    });
 
     // Calculate total expected doses in the time range, considering medication start/end dates
     let totalExpected = 0;
@@ -95,14 +121,19 @@ export default function Progress() {
     const adherenceRate = totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 0;
 
     // Calculate current streak - consecutive days of perfect adherence
-    const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const sortedLogs = [...logs].sort((a, b) => {
+      const dateA = getLogDate(a);
+      const dateB = getLogDate(b);
+      if (!dateA || !dateB) return 0;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
     let currentStreak = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     // Check if today is complete first
     const todayString = today.toISOString().split('T')[0];
-    const todayLogs = sortedLogs.filter(log => log.date === todayString);
+    const todayLogs = sortedLogs.filter(log => getLogDate(log) === todayString);
     let todayExpected = 0;
     
     medications.forEach(med => {
@@ -140,7 +171,7 @@ export default function Progress() {
     while (checkDate.getTime() >= earliestMedicationDate) {
       const dateString = checkDate.toISOString().split('T')[0];
       const dayDate = new Date(dateString);
-      const dayLogs = sortedLogs.filter(log => log.date === dateString);
+      const dayLogs = sortedLogs.filter(log => getLogDate(log) === dateString);
       
       // Calculate expected doses for this day based on active medications
       let expectedForDay = 0;
@@ -184,7 +215,7 @@ export default function Progress() {
     };
   };
 
-  const stats = calculateStats();
+  const stats = calculateAdherence(logs, medications);
 
   // Get daily adherence for the last 30 days with medication date ranges
   const getDailyAdherence = () => {
@@ -197,7 +228,7 @@ export default function Progress() {
       const dateString = date.toISOString().split('T')[0];
       const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
       
-      const dayLogs = logs.filter(log => log.date === dateString);
+      const dayLogs = logs.filter(log => getLogDate(log) === dateString);
       
       // Calculate expected doses for this day based on active medications
       let expectedForDay = 0;
