@@ -77,18 +77,25 @@ export async function DELETE(
     const userSettings = await UserSettings.findOne({ userId: session.userId });
     const keepLogs = userSettings?.keepLogsAfterDeletion || false;
 
-    // Delete related medication logs only if user setting allows it
-    if (!keepLogs) {
-      await MedicationLog.deleteMany({ medicationId: id });
+    if (keepLogs) {
+      // Soft delete: mark as inactive
+      medication.isActive = false;
+      await medication.save();
+      
+      return NextResponse.json({ 
+        message: 'Medication marked as inactive',
+        updatedId: id 
+      });
+    } else {
+      // Hard delete: remove medication and logs
+      await MedicationLog.deleteMany({ medicationId: id, userId: session.userId });
+      await Medication.findByIdAndDelete(id);
+      
+      return NextResponse.json({ 
+        message: 'Medication deleted successfully',
+        deletedId: id 
+      });
     }
-
-    // Delete the medication
-    await Medication.findByIdAndDelete(id);
-    
-    return NextResponse.json({ 
-      message: 'Medication deleted successfully',
-      deletedId: id 
-    });
   } catch (error) {
     console.error('Failed to delete medication:', error)
     return NextResponse.json({ error: 'Failed to delete medication' }, { status: 500 })

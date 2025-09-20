@@ -5,6 +5,7 @@ import { Phone, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '@/components/providers/auth-provider'
 import { useToast } from '@/hooks/use-toast'
 import { SettingsDialog } from '@/components/settings-dialog'
+import { NotificationBell } from '@/components/notification-bell'
 import { useState } from 'react'
 
 interface AppHeaderProps {
@@ -83,6 +84,9 @@ export default function AppHeader({
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 lg:gap-6 w-full sm:w-auto">
+            {/* Notification Bell */}
+            <NotificationBell />
+            
             {onEmergencyContacts && (
               <Button
                 variant="outline"

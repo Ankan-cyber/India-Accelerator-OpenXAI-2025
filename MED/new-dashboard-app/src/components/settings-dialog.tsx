@@ -32,6 +32,38 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [medicationSettings, setMedicationSettings] = useState({
     keepLogsAfterDeletion: false,
   });
+  const [notificationSettings, setNotificationSettings] = useState({
+    notificationsEnabled: true,
+    medicationReminders: {
+      enabled: true,
+      reminderMinutes: [15, 0],
+    },
+    healthTips: {
+      enabled: true,
+      dailyTime: '09:00',
+    },
+    progressReports: {
+      enabled: true,
+      weeklyDay: 0,
+      weeklyTime: '18:00',
+    },
+    overdueAlerts: {
+      enabled: true,
+      intervalMinutes: 30,
+      maxReminders: 3,
+    },
+  });
+
+  const [generalNotificationSettings, setGeneralNotificationSettings] = useState({
+    sound: true,
+    vibration: true,
+    showOnLockScreen: true,
+    quietHours: {
+      enabled: false,
+      startTime: '22:00',
+      endTime: '07:00',
+    },
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const { logout } = useAuth();
@@ -54,6 +86,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setMedicationSettings({
         keepLogsAfterDeletion: userSettings.keepLogsAfterDeletion,
       });
+      if (userSettings.notificationSettings) {
+        setNotificationSettings(userSettings.notificationSettings);
+      }
+      if (userSettings.generalNotificationSettings) {
+        setGeneralNotificationSettings(userSettings.generalNotificationSettings);
+      }
     }
   }, [userSettings]);
 
@@ -79,6 +117,32 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       toast({
         title: "Error",
         description: "Failed to save settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveNotificationSettingsMutation = useMutation({
+    mutationFn: async (settings: { notificationSettings: typeof notificationSettings, generalNotificationSettings: typeof generalNotificationSettings }) => {
+      const response = await fetch('/api/user-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (!response.ok) throw new Error('Failed to save notification settings');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user-settings'] });
+      toast({
+        title: "Settings saved",
+        description: "Your notification preferences have been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to save notification settings. Please try again.",
         variant: "destructive",
       });
     },
@@ -364,35 +428,320 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             {activeTab === 'notifications' && (
               <Card className="glass-card border-white/20">
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold text-white mb-4">Notification Preferences</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">Medication Reminders</p>
-                        <p className="text-gray-300 text-sm">Get notified when it&apos;s time to take medications</p>
+                  <h3 className="text-xl font-semibold text-white mb-6">Notification Preferences</h3>
+                  <div className="space-y-6">
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">Enable All Notifications</p>
+                          <p className="text-gray-300 text-sm">Master switch for all app notifications</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${notificationSettings.notificationsEnabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setNotificationSettings(prev => ({
+                            ...prev,
+                            notificationsEnabled: !prev.notificationsEnabled
+                          }))}
+                        >
+                          {notificationSettings.notificationsEnabled ? 'Enabled' : 'Disabled'}
+                        </Button>
                       </div>
-                      <Button variant="outline" className="glass-button">
-                        Enable
-                      </Button>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">Daily Health Tips</p>
-                        <p className="text-gray-300 text-sm">Receive daily health tips and advice</p>
+                    
+                    {/* Medication Reminders */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">💊 Medication Reminders</p>
+                          <p className="text-gray-300 text-sm">Get notified when it&apos;s time to take medications</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${notificationSettings.medicationReminders.enabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setNotificationSettings(prev => ({
+                            ...prev,
+                            medicationReminders: { ...prev.medicationReminders, enabled: !prev.medicationReminders.enabled }
+                          }))}
+                        >
+                          {notificationSettings.medicationReminders.enabled ? 'Enabled' : 'Disabled'}
+                        </Button>
                       </div>
-                      <Button variant="outline" className="glass-button">
-                        Enable
-                      </Button>
+                      
+                      {notificationSettings.medicationReminders.enabled && (
+                        <div className="ml-4 space-y-3 border-l-2 border-white/10 pl-4">
+                          <div>
+                            <Label className="text-gray-300 text-sm">Reminder Times (minutes before)</Label>
+                            <div className="flex gap-2 mt-2">
+                              {[5, 10, 15, 30, 60].map(minutes => (
+                                <Button
+                                  key={minutes}
+                                  variant="outline"
+                                  size="sm"
+                                  className={`glass-button text-xs ${
+                                    notificationSettings.medicationReminders.reminderMinutes.includes(minutes) 
+                                      ? 'border-blue-400 text-blue-400' : ''
+                                  }`}
+                                  onClick={() => {
+                                    const current = notificationSettings.medicationReminders.reminderMinutes;
+                                    const updated = current.includes(minutes)
+                                      ? current.filter(m => m !== minutes)
+                                      : [...current, minutes].sort((a, b) => b - a);
+                                    setNotificationSettings(prev => ({
+                                      ...prev,
+                                      medicationReminders: { ...prev.medicationReminders, reminderMinutes: updated }
+                                    }));
+                                  }}
+                                >
+                                  {minutes}m
+                                </Button>
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Selected: {notificationSettings.medicationReminders.reminderMinutes.join(', ')}m before
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-white font-medium">Progress Reports</p>
-                        <p className="text-gray-300 text-sm">Weekly medication adherence reports</p>
+
+                    {/* Health Tips */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">💡 Daily Health Tips</p>
+                          <p className="text-gray-300 text-sm">Receive daily health tips and advice</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${notificationSettings.healthTips.enabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setNotificationSettings(prev => ({
+                            ...prev,
+                            healthTips: { ...prev.healthTips, enabled: !prev.healthTips.enabled }
+                          }))}
+                        >
+                          {notificationSettings.healthTips.enabled ? 'Enabled' : 'Disabled'}
+                        </Button>
                       </div>
-                      <Button variant="outline" className="glass-button">
-                        Enable
-                      </Button>
+                      
+                      {notificationSettings.healthTips.enabled && (
+                        <div className="ml-4 space-y-3 border-l-2 border-white/10 pl-4">
+                          <div>
+                            <Label htmlFor="health-tip-time" className="text-gray-300 text-sm">Daily Time</Label>
+                            <Input
+                              id="health-tip-time"
+                              type="time"
+                              value={notificationSettings.healthTips.dailyTime}
+                              onChange={(e) => setNotificationSettings(prev => ({
+                                ...prev,
+                                healthTips: { ...prev.healthTips, dailyTime: e.target.value }
+                              }))}
+                              className="glass-button mt-1 w-40"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Progress Reports */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">📈 Progress Reports</p>
+                          <p className="text-gray-300 text-sm">Weekly summaries of your medication adherence</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${notificationSettings.progressReports.enabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setNotificationSettings(prev => ({
+                            ...prev,
+                            progressReports: { ...prev.progressReports, enabled: !prev.progressReports.enabled }
+                          }))}
+                        >
+                          {notificationSettings.progressReports.enabled ? 'Enabled' : 'Disabled'}
+                        </Button>
+                      </div>
+                      
+                      {notificationSettings.progressReports.enabled && (
+                        <div className="ml-4 space-y-3 border-l-2 border-white/10 pl-4">
+                          <div className="flex gap-4">
+                            <div>
+                              <Label className="text-gray-300 text-sm">Day of Week</Label>
+                              <select
+                                value={notificationSettings.progressReports.weeklyDay}
+                                onChange={(e) => setNotificationSettings(prev => ({
+                                  ...prev,
+                                  progressReports: { ...prev.progressReports, weeklyDay: parseInt(e.target.value) }
+                                }))}
+                                className="glass-button mt-1 w-full"
+                              >
+                                <option value={0}>Sunday</option>
+                                <option value={1}>Monday</option>
+                                <option value={2}>Tuesday</option>
+                                <option value={3}>Wednesday</option>
+                                <option value={4}>Thursday</option>
+                                <option value={5}>Friday</option>
+                                <option value={6}>Saturday</option>
+                              </select>
+                            </div>
+                            <div>
+                              <Label className="text-gray-300 text-sm">Time</Label>
+                              <Input
+                                type="time"
+                                value={notificationSettings.progressReports.weeklyTime}
+                                onChange={(e) => setNotificationSettings(prev => ({
+                                  ...prev,
+                                  progressReports: { ...prev.progressReports, weeklyTime: e.target.value }
+                                }))}
+                                className="glass-button mt-1 w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Overdue Alerts */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">⚠️ Overdue Alerts</p>
+                          <p className="text-gray-300 text-sm">Reminders for missed medications</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${notificationSettings.overdueAlerts.enabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setNotificationSettings(prev => ({
+                            ...prev,
+                            overdueAlerts: { ...prev.overdueAlerts, enabled: !prev.overdueAlerts.enabled }
+                          }))}
+                        >
+                          {notificationSettings.overdueAlerts.enabled ? 'Enabled' : 'Disabled'}
+                        </Button>
+                      </div>
+                      
+                      {notificationSettings.overdueAlerts.enabled && (
+                        <div className="ml-4 space-y-3 border-l-2 border-white/10 pl-4">
+                          <div>
+                            <Label className="text-gray-300 text-sm">Reminder Interval (minutes)</Label>
+                            <Input
+                              type="number"
+                              value={notificationSettings.overdueAlerts.intervalMinutes}
+                              onChange={(e) => setNotificationSettings(prev => ({
+                                ...prev,
+                                overdueAlerts: { ...prev.overdueAlerts, intervalMinutes: parseInt(e.target.value) }
+                              }))}
+                              className="glass-button mt-1 w-40"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm">Max Reminders</Label>
+                            <Input
+                              type="number"
+                              value={notificationSettings.overdueAlerts.maxReminders}
+                              onChange={(e) => setNotificationSettings(prev => ({
+                                ...prev,
+                                overdueAlerts: { ...prev.overdueAlerts, maxReminders: parseInt(e.target.value) }
+                              }))}
+                              className="glass-button mt-1 w-40"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* General Settings */}
+                    <div className="space-y-4 pt-4 border-t border-white/10">
+                       <h4 className="text-lg font-medium text-white">General Notification Settings</h4>
+                       <div className="flex items-center justify-between">
+                        <p className="text-gray-300">Sound</p>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${generalNotificationSettings.sound ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setGeneralNotificationSettings(prev => ({ ...prev, sound: !prev.sound }))}
+                        >
+                          {generalNotificationSettings.sound ? 'On' : 'Off'}
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-gray-300">Vibration</p>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${generalNotificationSettings.vibration ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setGeneralNotificationSettings(prev => ({ ...prev, vibration: !prev.vibration }))}
+                        >
+                          {generalNotificationSettings.vibration ? 'On' : 'Off'}
+                        </Button>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-gray-300">Show on Lock Screen</p>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${generalNotificationSettings.showOnLockScreen ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setGeneralNotificationSettings(prev => ({ ...prev, showOnLockScreen: !prev.showOnLockScreen }))}
+                        >
+                          {generalNotificationSettings.showOnLockScreen ? 'Enabled' : 'Disabled'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Quiet Hours */}
+                    <div className="space-y-4 pt-4 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">🌙 Quiet Hours</p>
+                          <p className="text-gray-300 text-sm">Silence notifications during specific times</p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          className={`glass-button ${generalNotificationSettings.quietHours.enabled ? 'border-green-400 text-green-400' : ''}`}
+                          onClick={() => setGeneralNotificationSettings(prev => ({
+                            ...prev,
+                            quietHours: { ...prev.quietHours, enabled: !prev.quietHours.enabled }
+                          }))}
+                        >
+                          {generalNotificationSettings.quietHours.enabled ? 'Enabled' : 'Disabled'}
+                        </Button>
+                      </div>
+                      
+                      {generalNotificationSettings.quietHours.enabled && (
+                        <div className="ml-4 flex gap-4 border-l-2 border-white/10 pl-4">
+                          <div>
+                            <Label className="text-gray-300 text-sm">Start Time</Label>
+                            <Input
+                              type="time"
+                              value={generalNotificationSettings.quietHours.startTime}
+                              onChange={(e) => setGeneralNotificationSettings(prev => ({
+                                ...prev,
+                                quietHours: { ...prev.quietHours, startTime: e.target.value }
+                              }))}
+                              className="glass-button mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-gray-300 text-sm">End Time</Label>
+                            <Input
+                              type="time"
+                              value={generalNotificationSettings.quietHours.endTime}
+                              onChange={(e) => setGeneralNotificationSettings(prev => ({
+                                ...prev,
+                                quietHours: { ...prev.quietHours, endTime: e.target.value }
+                              }))}
+                              className="glass-button mt-1"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      onClick={() => saveNotificationSettingsMutation.mutate({ notificationSettings, generalNotificationSettings })}
+                      className="glass-button-primary w-full mt-6"
+                      disabled={saveNotificationSettingsMutation.isPending}
+                    >
+                      {saveNotificationSettingsMutation.isPending ? 'Saving...' : 'Save Notification Settings'}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

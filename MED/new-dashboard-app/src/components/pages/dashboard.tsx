@@ -9,6 +9,10 @@ import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { useNotifications } from "@/hooks/use-notifications";
+import { useSimpleNotificationChecker } from "@/hooks/use-simple-notification-checker";
+import { useMarkTaken } from "@/hooks/use-mark-taken";
+import { useRealTimeSync } from "@/hooks/use-realtime-sync";
 import AppLayout from "@/components/app-layout";
 import AppHeader from "@/components/app-header";
 import Link from "next/link";
@@ -22,6 +26,7 @@ import {
   Plus,
   PieChart,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import type { IMedication, IMedicationLog } from "@/lib/models";
 
@@ -36,6 +41,10 @@ export default function Dashboard() {
   const [showEmergencyContactsDisplay, setShowEmergencyContactsDisplay] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const { toast } = useToast();
+  const { scheduleMedicationReminders, sendHealthTipNotification } = useNotifications();
+  const { markTaken, isLoading: isMarkTakenLoading } = useMarkTaken();
+  useSimpleNotificationChecker(); // Add simple notification checking
+  useRealTimeSync({ interval: 10000 }); // Real-time sync every 10 seconds
   const queryClient = useQueryClient();
 
   const { data: dailyTip, refetch: refetchDailyTip, isLoading: isDailyTipLoading, isFetching: isFetchingDailyTip } = useQuery<HealthTip>({
@@ -87,65 +96,55 @@ export default function Dashboard() {
     },
   });
 
-  // Mark medication as taken mutation
-  const markTakenMutation = useMutation({
-    mutationFn: async ({ medicationId, scheduledTime }: { medicationId: string; scheduledTime: string }) => {
-      const response = await fetch('/api/medication-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          medicationId,
-          scheduledTime,
-          date: today,
-          takenAt: new Date().toISOString(),
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to mark medication as taken');
-      return response.json();
-    },
-    onMutate: async ({ medicationId, scheduledTime }) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['/api/medication-logs'] });
-
-      // Snapshot the previous value
-      const previousLogs = queryClient.getQueryData(['/api/medication-logs']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['/api/medication-logs'], (old: IMedicationLog[] = []) => [
-        ...old,
-        {
-          id: `temp-${Date.now()}`,
-          userId: 'current-user',
-          medicationId,
-          takenAt: new Date(),
-          scheduledTime,
-          date: today,
+  // Schedule notifications for all existing medications on component mount
+  useEffect(() => {
+    if (isMounted && medications.length > 0) {
+      console.log('Scheduling notifications for existing medications:', medications.length);
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      medications.forEach(async (medication) => {
+        const medId = medication.id || String((medication as { _id?: string })._id);
+        
+        // Check if we should schedule reminders for each time slot
+        const timesToSchedule = [];
+        
+        for (const time of medication.times) {
+          try {
+            // Check if medication is already taken for this time today
+            const logResponse = await fetch(`/api/medication-logs?medicationId=${medId}&scheduledTime=${time}&date=${today}`);
+            if (logResponse.ok) {
+              const logs = await logResponse.json();
+              if (logs.length === 0) {
+                // No log exists, so we should schedule reminder
+                timesToSchedule.push(time);
+              }
+            } else {
+              // If API call fails, schedule as fallback
+              timesToSchedule.push(time);
+            }
+          } catch (error) {
+            console.error('Error checking medication logs:', error);
+            // If error, schedule as fallback
+            timesToSchedule.push(time);
+          }
         }
-      ]);
-
-      return { previousLogs };
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previousLogs) {
-        queryClient.setQueryData(['/api/medication-logs'], context.previousLogs);
-      }
-      toast({
-        title: "Error",
-        description: "Failed to mark medication as taken. Please try again.",
-        variant: "destructive",
+        
+        // Only schedule reminders for times that haven't been taken
+        if (timesToSchedule.length > 0) {
+          console.log(`Scheduling reminders for ${medication.name} at times:`, timesToSchedule);
+          scheduleMedicationReminders(
+            medId,
+            medication.name,
+            medication.dosage,
+            timesToSchedule
+          );
+        } else {
+          console.log(`All times already taken for ${medication.name}, skipping reminders`);
+        }
       });
-    },
-    onSuccess: () => {
-      // Invalidate all medication-related queries for real-time updates
-      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
-      toast({
-        title: "Medication marked as taken",
-        description: "Great job staying on track with your medication!",
-      });
-    },
-  });
+    }
+  }, [isMounted, medications, scheduleMedicationReminders]);
 
   // Delete medication mutation
   const deleteMedicationMutation = useMutation({
@@ -201,7 +200,8 @@ export default function Dashboard() {
         isTaken: logs.some(log =>
           log.medicationId === medication.id &&
           log.scheduledTime === time &&
-          log.date === today
+          log.logDate && new Date(log.logDate).toISOString().split('T')[0] === today &&
+          log.taken === true
         )
       }))
     )
@@ -446,12 +446,13 @@ export default function Dashboard() {
                   <MedicationCard
                     key={`${medication.id}-${medication.scheduledTime}`}
                     medication={medication}
-                    onMarkAsTaken={() => markTakenMutation.mutate({
+                    onMarkAsTaken={() => markTaken({
                       medicationId: medication.id!,
-                      scheduledTime: medication.scheduledTime
+                      scheduledTime: medication.scheduledTime,
+                      date: today
                     })}
                     onDelete={() => deleteMedicationMutation.mutate(medication.id!)}
-                    isLoading={markTakenMutation.isPending}
+                    isLoading={isMarkTakenLoading}
                   />
                 ))}
               </div>
@@ -513,6 +514,77 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        {/* Demo Notification Section */}
+        <section aria-label="Notification testing" className="mobile-section-spacing">
+          <Card className="glass-card border-blue-400/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10">
+            <CardContent className="mobile-card">
+              <div className="flex flex-col sm:flex-row items-start gap-4">
+                <div className="p-3 rounded-full bg-blue-500/20 text-blue-400 flex-shrink-0">
+                  <Bell size={28} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                    🔔 Notification System
+                  </h3>
+                  <p className="text-base sm:text-lg text-gray-300 mb-4">
+                    Test the comprehensive notification and reminder system with real-time alerts, medication reminders, and health tips.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <Button
+                      onClick={() => {
+                        sendHealthTipNotification(
+                          "Remember to take your medications with a full glass of water to help with absorption and reduce stomach irritation.",
+                          "Medication Safety"
+                        );
+                        toast({
+                          title: "Health Tip Sent!",
+                          description: "Check your notifications for a new health tip.",
+                        });
+                      }}
+                      size="sm"
+                      className="glass-button-primary"
+                    >
+                      <Heart size={16} className="mr-2" />
+                      Send Health Tip
+                    </Button>
+                    
+                    <Button
+                      onClick={() => {
+                        if (medications.length > 0) {
+                          const med = medications[0];
+                          const medId = med.id || String((med as { _id?: string })._id);
+                          scheduleMedicationReminders(
+                            medId,
+                            med.name,
+                            med.dosage,
+                            med.times
+                          );
+                          toast({
+                            title: "Reminders Scheduled!",
+                            description: `Medication reminders set for ${med.name}.`,
+                          });
+                        } else {
+                          toast({
+                            title: "No medications",
+                            description: "Add a medication first to test reminders.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      size="sm"
+                      variant="outline"
+                      className="glass-button"
+                    >
+                      <Clock size={16} className="mr-2" />
+                      Test Reminder
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </main>
 

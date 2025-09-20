@@ -1,11 +1,12 @@
 "use client"
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import AppLayout from "@/components/app-layout";
 import AppHeader from "@/components/app-header";
-import { useToast } from "@/hooks/use-toast";
+import { useMarkTaken } from "@/hooks/use-mark-taken";
+import { useRealTimeSync } from "@/hooks/use-realtime-sync";
 import {
   PillBottle,
   Clock,
@@ -21,8 +22,8 @@ import { EmergencyContactsDisplayDialog } from "@/components/emergency-contacts-
 export default function Schedule() {
   const [currentWeek, setCurrentWeek] = useState(0);
   const [showEmergencyContacts, setShowEmergencyContacts] = useState(false);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const { markTaken, isLoading: isMarkTakenLoading } = useMarkTaken();
+  useRealTimeSync({ interval: 10000 }); // Real-time sync every 10 seconds
 
   const { data: medications = [] } = useQuery<IMedication[]>({
     queryKey: ['/api/medications'],
@@ -42,66 +43,13 @@ export default function Schedule() {
     },
   });
 
-  // Mark medication as taken mutation
-  const markTakenMutation = useMutation({
-    mutationFn: async ({ medicationId, scheduledTime, date }: { medicationId: string; scheduledTime: string; date: string }) => {
-      const response = await fetch('/api/medication-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          medicationId,
-          scheduledTime,
-          date,
-          takenAt: new Date().toISOString(),
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to mark medication as taken');
-      return response.json();
-    },
-    onMutate: async ({ medicationId, scheduledTime, date }) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ['/api/medication-logs'] });
-
-      // Snapshot the previous value
-      const previousLogs = queryClient.getQueryData(['/api/medication-logs']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['/api/medication-logs'], (old: IMedicationLog[] = []) => [
-        ...old,
-        {
-          id: `temp-${Date.now()}`,
-          userId: 'current-user',
-          medicationId,
-          takenAt: new Date(),
-          scheduledTime,
-          date,
-        }
-      ]);
-
-      // Return a context with the previous and new logs
-      return { previousLogs };
-    },
-    onError: (err, variables, context) => {
-      // If the mutation fails, use the context we returned above
-      if (context?.previousLogs) {
-        queryClient.setQueryData(['/api/medication-logs'], context.previousLogs);
-      }
-      toast({
-        title: "Error",
-        description: "Failed to mark medication as taken. Please try again.",
-        variant: "destructive",
-      });
-    },
-    onSuccess: () => {
-      // Invalidate queries to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['/api/medication-logs'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
-      toast({
-        title: "Medication marked as taken",
-        description: "Great job staying on track with your medication!",
-      });
-    },
-  });
+  const handleMarkTaken = (medicationId: string, scheduledTime: string, date: string) => {
+    markTaken({
+      medicationId,
+      scheduledTime,
+      date
+    });
+  };
 
   // Get current week dates
   const getWeekDates = (weekOffset: number = 0) => {
@@ -127,37 +75,73 @@ export default function Schedule() {
     const dateString = date.toISOString().split('T')[0];
     const currentDate = new Date(dateString);
     
-    return medications
+    const activeMedications = medications
       .filter(medication => {
-        // Only include medications that should be active on this date
         const createdDate = new Date(medication.createdAt);
         const startDate = medication.startDate ? new Date(medication.startDate) : createdDate;
         const endDate = medication.endDate ? new Date(medication.endDate) : null;
         
-        // Ensure we don't show medications before they were created
         const isAfterCreation = currentDate >= new Date(createdDate.toISOString().split('T')[0]);
-        
-        // Check if the current date is after the start date
         const isAfterStart = currentDate >= new Date(startDate.toISOString().split('T')[0]);
-        
-        // Check if the current date is before the end date (if end date exists)
         const isBeforeEnd = !endDate || currentDate <= new Date(endDate.toISOString().split('T')[0]);
         
-        // Only include active medications that fall within the date range and after creation
         return medication.isActive && isAfterCreation && isAfterStart && isBeforeEnd;
       })
       .flatMap(medication =>
-        medication.times.map(time => ({
-          ...medication,
-          scheduledTime: time,
-          date: dateString,
-          isTaken: logs.some(log =>
-            log.medicationId === medication.id &&
-            log.scheduledTime === time &&
-            log.date === dateString
-          )
-        }))
+        medication.times.map(time => {
+          const today = new Date();
+          const scheduledDateTime = new Date(`${dateString}T${time}:00`);
+          
+          // A medication is "past due" if:
+          // 1. It's on a previous date, OR
+          // 2. It's today but the scheduled time has passed
+          const isPastDue = currentDate < today || 
+            (currentDate.toDateString() === today.toDateString() && scheduledDateTime <= today);
+          
+          return {
+            ...medication,
+            scheduledTime: time,
+            date: dateString,
+            isTaken: logs.some(log => {
+              const medId = medication.id || String((medication as { _id?: string })._id);
+              return log.medicationId === medId &&
+                log.scheduledTime === time &&
+                log.logDate && new Date(log.logDate).toISOString().split('T')[0] === dateString &&
+                log.taken === true;
+            }),
+            isPast: isPastDue
+          };
+        })
+      );
+
+    const pastMedications = medications
+      .filter(medication => !medication.isActive) // Inactive medications
+      .flatMap(medication =>
+        medication.times.map(time => {
+          const isTaken = logs.some(log => {
+            const medId = medication.id || String((medication as { _id?: string })._id);
+            return log.medicationId === medId &&
+              log.scheduledTime === time &&
+              log.logDate && new Date(log.logDate).toISOString().split('T')[0] === dateString &&
+              log.taken === true;
+          });
+
+          // Only include past medications if they have a log entry for that day
+          if (isTaken) {
+            return {
+              ...medication,
+              scheduledTime: time,
+              date: dateString,
+              isTaken: true,
+              isPast: true
+            };
+          }
+          return null;
+        })
       )
+      .filter(item => item !== null);
+
+    return [...activeMedications, ...pastMedications]
       .sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime));
   };
 
@@ -309,15 +293,17 @@ export default function Schedule() {
                           className={`p-4 rounded-xl border-2 transition-all duration-200 ${
                             item.isTaken 
                               ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-100' 
+                              : item.isPast
+                              ? 'bg-gray-500/10 border-gray-400/30 text-gray-400'
                               : 'bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/30'
                           }`}
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className={`p-2 rounded-lg ${
-                              item.isTaken ? 'bg-emerald-500/30' : 'bg-blue-500/20'
+                              item.isTaken ? 'bg-emerald-500/30' : item.isPast ? 'bg-gray-500/20' : 'bg-blue-500/20'
                             }`}>
                               <PillBottle className={`${
-                                item.isTaken ? 'text-emerald-300' : 'text-blue-300'
+                                item.isTaken ? 'text-emerald-300' : item.isPast ? 'text-gray-400' : 'text-blue-300'
                               }`} size={20} />
                             </div>
                             {item.isTaken && (
@@ -328,40 +314,44 @@ export default function Schedule() {
                                 <span className="text-sm font-medium">Taken</span>
                               </div>
                             )}
+                             {item.isPast && !item.isTaken && (
+                              <span className="text-xs text-gray-500 px-3 py-1 bg-gray-500/10 rounded-md">
+                                Inactive
+                              </span>
+                            )}
                           </div>
                           
                           <div className="space-y-2">
-                            <h4 className="font-semibold text-lg leading-tight">{item.name}</h4>
+                            <h4 className={`font-semibold text-lg leading-tight ${item.isPast ? 'line-through' : ''}`}>{item.name}</h4>
                             <p className={`text-sm ${
-                              item.isTaken ? 'text-emerald-200' : 'text-gray-300'
+                              item.isTaken ? 'text-emerald-200' : item.isPast ? 'text-gray-400' : 'text-gray-300'
                             }`}>
                               {item.dosage}
                             </p>
                             <div className="flex items-center justify-between">
                               <span className={`font-mono text-lg font-bold ${
-                                item.isTaken ? 'text-emerald-300' : 'text-blue-300'
+                                item.isTaken ? 'text-emerald-300' : item.isPast ? 'text-gray-400' : 'text-blue-300'
                               }`}>
                                 {item.scheduledTime}
                               </span>
-                              {!item.isTaken && date.toDateString() <= new Date().toDateString() ? (
+                              {!item.isTaken && item.isPast ? (
                                 <Button
-                                  onClick={() => markTakenMutation.mutate({
-                                    medicationId: item.id!,
-                                    scheduledTime: item.scheduledTime,
-                                    date: item.date
-                                  })}
-                                  disabled={markTakenMutation.isPending}
+                                  onClick={() => {
+                                    const medicationId = item.id || String((item as { _id?: string })._id);
+                                    handleMarkTaken(medicationId, item.scheduledTime, item.date);
+                                  }}
+                                  disabled={isMarkTakenLoading}
                                   size="sm"
                                   className="glass-button-primary text-xs px-3 py-1 h-auto"
                                 >
-                                  {markTakenMutation.isPending ? (
+                                  {isMarkTakenLoading ? (
                                     <span className="inline-block animate-spin mr-1">⏳</span>
                                   ) : (
                                     <Check size={12} className="mr-1" />
                                   )}
-                                  {markTakenMutation.isPending ? 'Marking...' : 'Mark Taken'}
+                                  {isMarkTakenLoading ? 'Marking...' : 'Mark Taken'}
                                 </Button>
-                              ) : !item.isTaken && date.toDateString() > new Date().toDateString() ? (
+                              ) : !item.isTaken && !item.isPast ? (
                                 <span className="text-xs text-gray-500 px-3 py-1 bg-gray-500/10 rounded-md">
                                   Future
                                 </span>

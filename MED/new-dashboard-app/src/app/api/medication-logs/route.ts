@@ -13,10 +13,29 @@ export async function GET(request: NextRequest) {
     await connectDB()
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date')
+    const medicationId = searchParams.get('medicationId')
+    const scheduledTime = searchParams.get('scheduledTime')
 
-    const query: { userId: string; date?: string } = { userId: session.userId as string }
+    const query: { 
+      userId: string; 
+      logDate?: { $gte: Date; $lt: Date };
+      medicationId?: string;
+      scheduledTime?: string;
+    } = { userId: session.userId as string }
+    
     if (date) {
-      query.date = date
+      const startOfDay = new Date(date);
+      const endOfDay = new Date(date);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      query.logDate = { $gte: startOfDay, $lt: endOfDay };
+    }
+    
+    if (medicationId) {
+      query.medicationId = medicationId;
+    }
+    
+    if (scheduledTime) {
+      query.scheduledTime = scheduledTime;
     }
 
     const logs = await MedicationLog.find(query).sort({ takenAt: -1 })
@@ -27,7 +46,11 @@ export async function GET(request: NextRequest) {
       medicationId: log.medicationId.toString(),
       takenAt: log.takenAt,
       scheduledTime: log.scheduledTime,
-      date: log.date,
+      logDate: log.logDate,
+      taken: log.taken,
+      dismissed: log.dismissed,
+      // Keep date for backward compatibility
+      date: log.logDate?.toISOString().split('T')[0],
     }))
 
     return NextResponse.json(formattedLogs)
@@ -52,7 +75,9 @@ export async function POST(request: NextRequest) {
       medicationId: body.medicationId,
       takenAt: new Date(body.takenAt || Date.now()),
       scheduledTime: body.scheduledTime,
-      date: body.date,
+      logDate: new Date(body.date || new Date().toISOString().split('T')[0]),
+      taken: true,
+      dismissed: false,
     })
 
     const savedLog = await log.save()
@@ -63,7 +88,11 @@ export async function POST(request: NextRequest) {
       medicationId: savedLog.medicationId.toString(),
       takenAt: savedLog.takenAt,
       scheduledTime: savedLog.scheduledTime,
-      date: savedLog.date,
+      logDate: savedLog.logDate,
+      taken: savedLog.taken,
+      dismissed: savedLog.dismissed,
+      // Keep date for backward compatibility
+      date: savedLog.logDate?.toISOString().split('T')[0],
     }
 
     return NextResponse.json(formattedLog, { status: 201 })

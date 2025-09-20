@@ -20,7 +20,18 @@ export async function GET() {
         userId: session.userId,
         keepLogsAfterDeletion: false,
         notificationsEnabled: true,
-        reminderInterval: 15,
+        notificationSettings: {
+          medicationReminders: { enabled: true, reminderMinutes: [15, 0] },
+          healthTips: { enabled: true, dailyTime: '09:00' },
+          progressReports: { enabled: true, weeklyDay: 0, weeklyTime: '18:00' },
+          overdueAlerts: { enabled: true, intervalMinutes: 30, maxReminders: 3 },
+        },
+        generalNotificationSettings: {
+          sound: true,
+          vibration: true,
+          showOnLockScreen: true,
+          quietHours: { enabled: false, startTime: '22:00', endTime: '07:00' },
+        },
       })
       await settings.save()
     }
@@ -30,7 +41,18 @@ export async function GET() {
       userId: settings.userId,
       keepLogsAfterDeletion: settings.keepLogsAfterDeletion,
       notificationsEnabled: settings.notificationsEnabled,
-      reminderInterval: settings.reminderInterval,
+      notificationSettings: settings.notificationSettings || {
+        medicationReminders: { enabled: true, reminderMinutes: [15, 0] },
+        healthTips: { enabled: true, dailyTime: '09:00' },
+        progressReports: { enabled: true, weeklyDay: 0, weeklyTime: '18:00' },
+        overdueAlerts: { enabled: true, intervalMinutes: 30, maxReminders: 3 },
+      },
+      generalNotificationSettings: settings.generalNotificationSettings || {
+        sound: true,
+        vibration: true,
+        showOnLockScreen: true,
+        quietHours: { enabled: false, startTime: '22:00', endTime: '07:00' },
+      },
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     }
@@ -70,7 +92,18 @@ export async function PUT(request: NextRequest) {
       userId: settings.userId,
       keepLogsAfterDeletion: settings.keepLogsAfterDeletion,
       notificationsEnabled: settings.notificationsEnabled,
-      reminderInterval: settings.reminderInterval,
+      notificationSettings: settings.notificationSettings || {
+        medicationReminders: { enabled: true, reminderMinutes: [15, 0] },
+        healthTips: { enabled: true, dailyTime: '09:00' },
+        progressReports: { enabled: true, weeklyDay: 0, weeklyTime: '18:00' },
+        overdueAlerts: { enabled: true, intervalMinutes: 30, maxReminders: 3 },
+      },
+      generalNotificationSettings: settings.generalNotificationSettings || {
+        sound: true,
+        vibration: true,
+        showOnLockScreen: true,
+        quietHours: { enabled: false, startTime: '22:00', endTime: '07:00' },
+      },
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     }

@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { InsertMedication } from "@/lib/models";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface AddMedicationDialogProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function AddMedicationDialog({ open, onClose }: AddMedicationDialogProps)
   const [error, setError] = useState("");
   
   const queryClient = useQueryClient();
+  const { scheduleMedicationReminders } = useNotifications();
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertMedication) => {
@@ -46,8 +48,19 @@ export function AddMedicationDialog({ open, onClose }: AddMedicationDialogProps)
       if (!response.ok) throw new Error('Failed to create medication');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (createdMedication) => {
       queryClient.invalidateQueries({ queryKey: ['/api/medications'] });
+      
+      // Schedule notifications for the new medication
+      if (createdMedication) {
+        scheduleMedicationReminders(
+          createdMedication.id,
+          createdMedication.name,
+          createdMedication.dosage,
+          createdMedication.times
+        );
+      }
+      
       handleClose();
     },
     onError: (error) => {
